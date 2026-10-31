@@ -1,0 +1,47 @@
+{
+  "label": "Sample in-memory primitive benchmark; NOT the agent-versus-pipeline benchmark",
+  "date": "2026-10-31T09:17:51.542Z",
+  "machine": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M4",
+    "node": "v22.22.0"
+  },
+  "inputRows": 10000,
+  "steps": [
+    "parse_number",
+    "normalize_text",
+    "compute_column",
+    "dedupe",
+    "sort",
+    "validate"
+  ],
+  "runs": 20,
+  "warmupRuns": 1,
+  "durationMs": [
+    19.39137500000001,
+    16.315167000000002,
+    13.813082999999978,
+    13.252874999999989,
+    13.957624999999979,
+    13.729291999999987,
+    13.962791000000038,
+    14.006791000000021,
+    13.946333000000038,
+    13.447750000000042,
+    13.603834000000006,
+    13.599833000000046,
+    13.478791000000001,
+    12.824625000000026,
+    13.631624999999985,
+    13.390541999999982,
+    13.399458999999979,
+    13.494374999999991,
+    13.600166000000002,
+    13.76516700000002
+  ],
+  "medianMs": 13.617729499999996,
+  "p95Ms": 16.315167000000002,
+  "includes": "Transformation and validation only. Excludes CSV parsing, SQL persistence, HTTP and UI.",
+  "llmCalls": 0
+}

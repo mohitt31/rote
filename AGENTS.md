@@ -40,3 +40,12 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 - Product pipelines are not implemented yet. Never fabricate benchmark data or describe planned behavior as working.
 - Before committing, typecheck and tests must pass. Commit identity: `git -c user.name="Mohit Prajapati" -c user.email="mohitprajapati3112@gmail.com" commit -m "..."`.
 - User-requested README/progress documentation takes precedence over the generic template instruction not to rewrite README.
+
+## Day 2 domain capabilities
+
+- `/workbench` imports synthetic samples or local CSV/XLSX, previews bounded rows, executes immutable steps, and prepares authenticated CSV downloads.
+- Public action names are kebab-case (Core CLI rejects underscores); internal step IDs retain the brief's snake_case names. All 15 implementations live in `server/rote/steps.ts` and their Zod schemas in `shared/rote/model.ts`.
+- Every table and log read/write is scoped to owner email plus organization. Output table and step log are committed in one transaction. Never accept ownership from action arguments.
+- `server/db/migrations.ts` contains additive named migrations. Do not rewrite an applied migration.
+- Local multipart uploads are deliberately unavailable with DATABASE_URL or in production. Hosted storage must use configured framework attachment storage.
+- Day 2 comparator is a tested pure function, not the complete verifier/approval product. The measured primitive benchmark excludes persistence and model work.

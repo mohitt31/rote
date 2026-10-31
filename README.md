@@ -2,7 +2,7 @@
 
 **Teach it once. Never pay for it again.**
 
-Rote is being built to turn repeated agent-led data jobs into verified, versioned deterministic pipelines. This repository currently contains the Agent-Native Chat scaffold and local setup, not the finished pipeline product.
+Rote is being built to turn repeated agent-led data jobs into verified, versioned deterministic pipelines. The Day 2 build includes a deterministic data workbench and tested table actions. The complete pipeline approval and replay product is still in progress.
 
 ## Current status
 
@@ -11,7 +11,9 @@ Rote is being built to turn repeated agent-led data jobs into verified, versione
 - Framework chat, local authentication, embedded PGlite database, and `hello` action.
 - Tool argument/result trace capture enabled; prompt capture and optional LLM judge disabled.
 - Gemini Flash-Lite configured through the framework; provider credentials stay in ignored `.env`.
-- Pipeline steps, goldens, holdouts, crystallization, promotion, drift handling, and benchmarks are **not implemented yet**.
+- Fifteen deterministic table actions, CSV/XLSX import, preview/export, scoped SQL storage and step logs. Open `/workbench`.
+- Synthetic payout/vendor generators, comparator groundwork and a measured primitive benchmark.
+- Goldens/holdout workflows, crystallization, promotion and drift handling are **not implemented yet**.
 
 ## Local setup
 
@@ -40,7 +42,7 @@ Useful commands:
 ./scripts/local pnpm action hello --name Mohit
 ```
 
-The starter test command permits an empty suite. An empty test run is not evidence that Rote's product behavior works. See `docs/progress-2026-10-31.md` for actual checks and blockers.
+See `docs/day-2.md` for current implementation, tests, import limits and verification evidence. `docs/progress-2026-10-31.md` retains the Day 1 record.
 
 ## Planned workflow
 
@@ -62,7 +64,7 @@ The verifier and reference examples will remain outside the repair model's edita
 
 | Capability | Current source or planned integration | Status |
 | --- | --- | --- |
-| Shared actions | `actions/hello.ts` | Scaffolded; smoke-check evidence in progress log |
+| Shared actions | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus import, preview, list and export; tested |
 | Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, `actions/navigate.ts` | Template retained |
 | Observability | `server/plugins/rote-config.ts`, `app/routes/observability.tsx` | Capture configured; real trace pending key |
 | Approval and audit | Future `promote_pipeline` action | Planned |
@@ -75,7 +77,7 @@ Agent-Native already provides stored Data Programs. Rote's proposed distinction 
 
 ## Benchmarks and data
 
-No benchmark has been run. There are no measured savings, latency claims, sample customer claims, or public demo links yet. Payout and vendor generators will be explicitly labeled sample data. CDSCO snapshots will retain provenance, fetch date, and SHA-256; none have been fetched yet.
+The six-step in-memory primitive benchmark on 10,000 rows measured 13.62 ms median and 16.32 ms p95 over 20 runs after one warmup. Raw measurements and machine metadata are in `benchmark/primitives.json`; this excludes parsing, SQL, HTTP and UI. No agent comparison or savings measurement has been performed. Payout and vendor generators are explicitly labeled sample data. CDSCO snapshots will retain provenance, fetch date, and SHA-256; none have been fetched yet.
 
 ## Pre-existing work and attribution
 

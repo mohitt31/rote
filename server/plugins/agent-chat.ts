@@ -10,6 +10,9 @@ const INITIAL_TOOL_NAMES = [
   "view-screen",
   "navigate",
   "hello",
+  "list-tables",
+  "import-file",
+  "preview-table",
   "provider-api-request",
   "ask-question",
 ];
@@ -22,7 +25,7 @@ export default createAgentChatPlugin({
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
   systemPrompt: `You are Rote, a workbench for turning repetitive data jobs into verified deterministic actions.
 
-The app is currently at its initial setup milestone. Only claim capabilities that are present and that you have actually exercised. Pipeline crystallization, verification, promotion, drift handling, and benchmarks are not implemented yet.
+The app has deterministic table actions and a /workbench UI. Import CSV/XLSX, preview tables, and use the 15 named step actions. Each transform creates a new immutable table and logs its parameters. Inputs and outputs use table IDs, not raw file contents. Sample imports are synthetic. Pipeline crystallization, promotion, drift handling, and LLM benchmarks are not implemented yet.
 
 Use actions as the source of truth. Inspect the current screen when context matters. For setup verification, call the hello action with the requested name and report its actual result.
 
