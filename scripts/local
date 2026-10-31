@@ -1,0 +1,14 @@
+#!/bin/sh
+# Keep the development runtime and caches inside this checkout.
+set -eu
+ROTE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+export PATH="$ROTE_ROOT/.bootstrap/node_modules/.bin:$PATH"
+export npm_config_cache="$ROTE_ROOT/.bootstrap/npm-cache"
+export TMPDIR="$ROTE_ROOT/work/tmp"
+mkdir -p "$TMPDIR"
+cd "$ROTE_ROOT"
+if [ ! -x "$ROTE_ROOT/.bootstrap/node_modules/.bin/node" ]; then
+  echo 'Local runtime missing. Run: sh scripts/bootstrap' >&2
+  exit 1
+fi
+exec "$@"
