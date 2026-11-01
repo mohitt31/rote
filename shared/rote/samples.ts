@@ -149,3 +149,65 @@ export function batchedPayoutSample(week: number) {
     },
   };
 }
+
+// Vendor price-list cleanup fixture: messy headers, spacing, casing, currency
+// strings, unit synonyms and exact duplicate rows. Reference rows are computed
+// from the generator's own ledger, independently of any pipeline.
+const VENDORS = [
+  "Acme Supplies",
+  "Northwind Traders",
+  "Globex Foods",
+  "Initech Parts",
+];
+const UNITS: [string, string][] = [
+  ["EA", "each"],
+  ["each", "each"],
+  ["Each", "each"],
+  ["pcs", "each"],
+  ["BX", "box"],
+  ["box", "box"],
+  ["CS", "case"],
+];
+export function vendorCleanupSample(week: number) {
+  if (!Number.isInteger(week) || week < 1 || week > 20)
+    throw Error("Sample week must be 1–20");
+  let seed = 7300 + week;
+  const random = () =>
+    (seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296;
+  const quote = (v: string) =>
+    /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = [" SKU ,Vendor Name,Unit Price,UOM"];
+  const expected: {
+    sku: string;
+    vendor: string;
+    price: number;
+    unit: string;
+  }[] = [];
+  for (let i = 0; i < 30; i++) {
+    const sku = `SKU-${String(100 + i)}`;
+    const vendor = VENDORS[i % VENDORS.length]!;
+    const cents = 500 + Math.floor(random() * 250000);
+    const [rawUnit, unit] = UNITS[Math.floor(random() * UNITS.length)]!;
+    const messySku = `${i % 3 ? " " : ""}${i % 2 ? sku.toLowerCase() : sku} `;
+    const messyVendor = `${i % 4 === 0 ? "  " : ""}${
+      i % 3 === 0 ? vendor.toUpperCase() : vendor.replace(" ", "   ")
+    }${i % 5 === 0 ? " " : ""}`;
+    const price = `$${(cents / 100).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+    const row = [messySku, messyVendor, price, rawUnit].map(quote).join(",");
+    lines.push(row);
+    if (i % 6 === 0) lines.push(row);
+    expected.push({
+      sku,
+      vendor: vendor.toLowerCase(),
+      price: cents / 100,
+      unit,
+    });
+  }
+  return {
+    csv: lines.join("\n") + "\n",
+    expected: { columns: ["sku", "vendor", "price", "unit"], rows: expected },
+  };
+}

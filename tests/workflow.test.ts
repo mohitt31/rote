@@ -439,3 +439,62 @@ it("generalizes an existing scalar without modifying frozen examples or approved
     ),
   ).rejects.toThrow();
 });
+
+it("cleans an unseen vendor price list after teaching one week", async () => {
+  const { prepareVendorSample } =
+    await import("../server/rote/vendor-sample.js");
+  const { vendorCleanupSample } = await import("../shared/rote/samples.js");
+  const fixture = await prepareVendorSample(scope);
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.training.inputs,
+      outputTableId: fixture.training.outputTableId!,
+      sourceOutputTableId: fixture.training.sourceOutputTableId!,
+      holdout: false,
+    },
+    scope,
+  );
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.holdout.inputs,
+      outputTableId: fixture.holdout.outputTableId!,
+      holdout: true,
+    },
+    scope,
+  );
+  const p = await crystallizeTask(fixture.taskId, scope);
+  expect((await verifyPipeline(p.id, scope)).pass).toBe(true);
+  await promotePipeline(p.id, p.hash, scope);
+  const out = await runTask(fixture.taskId, fixture.next.inputs, scope);
+  expect(out.status).toBe("succeeded");
+  expect(
+    compareTables(
+      vendorCleanupSample(3).expected,
+      await readTable(out.outputTableId!, scope),
+    ).pass,
+  ).toBe(true);
+  // Conflicting prices for one SKU must stop instead of keeping one silently.
+  const conflict = await readTable(fixture.next.inputs.prices, scope);
+  conflict.rows.push({ ...conflict.rows[1]!, "Unit Price": "$1.00" });
+  const dup = await saveImport(conflict, "conflict", scope, {
+    sha256: "vendor-conflict",
+    sample: true,
+  });
+  expect(
+    (await runTask(fixture.taskId, { prices: dup.outputTableId }, scope))
+      .status,
+  ).toBe("drift");
+  // A new unit code is unknown to the approved mapping: stop, never guess.
+  const week = await readTable(fixture.next.inputs.prices, scope);
+  week.rows[0]!.UOM = "dozen";
+  const changed = await saveImport(week, "new-unit", scope, {
+    sha256: "vendor-new-unit",
+    sample: true,
+  });
+  expect(
+    (await runTask(fixture.taskId, { prices: changed.outputTableId }, scope))
+      .status,
+  ).toBe("drift");
+});

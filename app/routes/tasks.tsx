@@ -1,3 +1,4 @@
+import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { writeClientAppState } from "@agent-native/core/client/application-state";
 import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
@@ -5,6 +6,7 @@ import {
   IconCheck,
   IconFlask,
   IconLock,
+  IconMessageCircle,
   IconPlayerPlay,
   IconPlus,
   IconShieldCheck,
@@ -17,6 +19,7 @@ import { Link, useSearchParams } from "react-router";
 import { ParameterizePipeline } from "@/components/ParameterizePipeline";
 import { PipelineSteps } from "@/components/rote/PipelineSteps";
 import { TablePicker, TablePreview } from "@/components/rote/TableBits";
+import { VersionDiff } from "@/components/rote/VersionDiff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -194,9 +197,12 @@ export default function Tasks() {
     );
   }, [activeNames]);
 
-  const prepareSample = () =>
-    perform("sample", async () => {
-      const result = await callAction("prepare-payout-sample", {});
+  const prepareSample = (kind: "payouts" | "vendors") =>
+    perform(`sample-${kind}`, async () => {
+      const result =
+        kind === "payouts"
+          ? await callAction("prepare-payout-sample", {})
+          : await callAction("prepare-vendor-sample", {});
       sessionStorage.setItem(
         `rote-demo:${result.taskId}`,
         JSON.stringify(result),
@@ -240,15 +246,22 @@ export default function Tasks() {
               <IconPlus className="size-4" />
             </Button>
           </form>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-muted-foreground"
-            disabled={!!busy}
-            onClick={() => void prepareSample()}
-          >
-            <IconFlask className="size-4" />
-            {busy === "sample" ? t("rote.working") : t("rote.prepareSample")}
-          </Button>
+          {(["payouts", "vendors"] as const).map((kind) => (
+            <Button
+              key={kind}
+              variant="ghost"
+              className="w-full justify-start gap-2 text-muted-foreground"
+              disabled={!!busy}
+              onClick={() => void prepareSample(kind)}
+            >
+              <IconFlask className="size-4" />
+              {busy === `sample-${kind}`
+                ? t("rote.working")
+                : kind === "payouts"
+                  ? t("rote.prepareSample")
+                  : t("rote.flow.prepareVendors")}
+            </Button>
+          ))}
         </div>
         <nav className="space-y-1" aria-label={t("rote.tasksTitle")}>
           {list.isLoading && (
@@ -301,7 +314,7 @@ export default function Tasks() {
           </p>
         )}
         {!id && (
-          <EmptyState onSample={() => void prepareSample()} busy={!!busy} />
+          <EmptyState onSample={(k) => void prepareSample(k)} busy={!!busy} />
         )}
         {id && detail.isLoading && (
           <div className="h-64 animate-pulse rounded-xl bg-muted" />
@@ -420,6 +433,15 @@ export default function Tasks() {
                       <PipelineSteps plan={view.latest.plan} />
                     </div>
                   </details>
+                  {data.versions[1] &&
+                    data.versions[1].hash !== view.latest.hash && (
+                      <VersionDiff
+                        from={data.versions[1].plan}
+                        to={view.latest.plan}
+                        fromVersion={data.versions[1].version}
+                        toVersion={view.latest.version}
+                      />
+                    )}
                   <details className="rounded-lg border px-3 py-2">
                     <summary className="cursor-pointer text-sm text-muted-foreground">
                       {t("rote.flow.advanced")}
@@ -533,6 +555,26 @@ export default function Tasks() {
                   <span className="break-all font-mono text-xs text-muted-foreground">
                     sha256 {view.latest.hash}
                   </span>
+                  {data.versions.length > 1 && (
+                    <ul className="w-full space-y-1 text-xs text-muted-foreground">
+                      {data.versions.map((v) => (
+                        <li key={v.id} className="flex flex-wrap gap-2">
+                          <span className="font-medium text-foreground">
+                            v{v.version}
+                          </span>
+                          <span>{v.status}</span>
+                          <span className="font-mono">
+                            {v.hash.slice(0, 12)}
+                          </span>
+                          {v.id === data.task.currentPipelineId && (
+                            <span className="text-emerald-700 dark:text-emerald-400">
+                              {t("rote.flow.chipActive")}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </Step>
@@ -618,6 +660,29 @@ export default function Tasks() {
                       </p>
                       {lastRun.outputTableId && (
                         <TablePreview id={lastRun.outputTableId} />
+                      )}
+                      {lastRun.status !== "succeeded" && (
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() =>
+                            sendToAgentChat({
+                              message: `This week's input stopped the approved "${data.task.name}" pipeline: ${lastRun.message}. Inspect the input tables, then redo the job with the Rote step actions so every step is recorded. Do not change the approved pipeline, frozen references or tolerances. Finish by telling me which output table to review.`,
+                              context: JSON.stringify({
+                                taskId: id,
+                                pipelineVersion: view.active?.version,
+                                inputs: toBindings(next.inputs),
+                                stopReason: lastRun.message,
+                              }),
+                              contextLabel: t("rote.flow.driftContext"),
+                              submit: false,
+                              openSidebar: true,
+                            })
+                          }
+                        >
+                          <IconMessageCircle className="size-4" />
+                          {t("rote.flow.askAgent")}
+                        </Button>
                       )}
                     </div>
                   )}
@@ -1030,7 +1095,7 @@ function EmptyState({
   onSample,
   busy,
 }: {
-  onSample: () => void;
+  onSample: (kind: "payouts" | "vendors") => void;
   busy: boolean;
 }) {
   const t = useT();
@@ -1057,10 +1122,25 @@ function EmptyState({
           </li>
         ))}
       </ol>
-      <Button className="gap-2" disabled={busy} onClick={onSample}>
-        <IconFlask className="size-4" />
-        {t("rote.prepareSample")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          className="gap-2"
+          disabled={busy}
+          onClick={() => onSample("payouts")}
+        >
+          <IconFlask className="size-4" />
+          {t("rote.prepareSample")}
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          disabled={busy}
+          onClick={() => onSample("vendors")}
+        >
+          <IconFlask className="size-4" />
+          {t("rote.flow.prepareVendors")}
+        </Button>
+      </div>
     </div>
   );
 }

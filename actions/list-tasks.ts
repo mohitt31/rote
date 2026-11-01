@@ -13,6 +13,7 @@ export default defineAction({
   schema: z.object({}),
   outputSchema: z.array(taskSchema),
   errors,
+  mcpTool: true,
   http: { method: "GET" },
   run: (a, ctx) => guarded(() => listTasks(scopeFor(ctx))),
 });

@@ -17,6 +17,7 @@ export default defineAction({
     }),
   ),
   errors,
+  mcpTool: true,
   http: { method: "GET" },
   run: (_, ctx) => guarded(() => listTables(scopeFor(ctx))),
 });

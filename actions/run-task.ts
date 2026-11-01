@@ -30,6 +30,7 @@ export default defineAction({
     message: z.string(),
   }),
   errors,
+  mcpTool: true,
   run: (a, ctx) =>
     guarded(() =>
       runTask(a.taskId, a.inputs, scopeFor(ctx), a.parameterValues),

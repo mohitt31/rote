@@ -2,6 +2,13 @@ const messages = {
   rote: {
     flow: {
       addInput: "Add input",
+      prepareVendors: "Prepare sample vendor cleanup",
+      askAgent: "Ask the agent to handle this week",
+      changedSteps: "changed steps",
+      driftContext: "Stopped Rote run",
+      inputsChanged: "inputs changed",
+      newParameters: "new parameters",
+      step: "Step",
       advanced: "Advanced: parameters and raw plan",
       approved: "Approved",
       changedRejected: "Changed value rejected",
@@ -12,7 +19,7 @@ const messages = {
       columnsDiffer: "Output columns differ from the reference.",
       drift: "Stopped: drift",
       driftHelp:
-        "No output was written. Review the new input, then teach the change and crystallize a new version.",
+        "No output was written. Hand this week to the agent; a permanent format change currently needs a new task with fresh approved references.",
       droppedRejected: "Dropped row rejected",
       emptyBody:
         "Teach a recurring data job once, approve a reference and an unseen holdout, and Rote replays the recorded steps as a verified pipeline with no model calls.",
@@ -86,7 +93,7 @@ const messages = {
     createTask: "Create task",
     prepareSample: "Prepare sample payout demo",
     samplePrepared:
-      "Three synthetic weeks prepared without a model. Load training and holdout, review each reference, and approve them before crystallizing.",
+      "Three synthetic weeks prepared without a model. Review the training and holdout references below, then approve each one.",
     activePipeline: "Active pipeline",
     needsApproval: "Awaiting reference / pipeline approval",
     chooseTask: "Create or select a task to begin.",
