@@ -6,7 +6,9 @@ import { scoped } from "./workflow.js";
 
 /** Public demo deployments set ROTE_PUBLIC_DEMO=true together with AUTH_DISABLED. */
 export const isPublicDemo = () =>
-  ["1", "true"].includes((process.env.ROTE_PUBLIC_DEMO ?? "").toLowerCase());
+  ["1", "true"].includes(
+    (process.env.ROTE_PUBLIC_DEMO ?? "").toLowerCase(), // guard:allow-env-credential — deploy-level boolean flag, not a credential
+  );
 
 export const DEMO_RESET_MS = 60 * 60 * 1000;
 

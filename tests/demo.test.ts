@@ -29,7 +29,7 @@ beforeAll(async () => {
 }, 20000);
 afterAll(async () => pg.close());
 afterEach(() => {
-  delete process.env.ROTE_PUBLIC_DEMO;
+  delete process.env.ROTE_PUBLIC_DEMO; // guard:allow-env-credential — test toggles the demo flag
 });
 
 async function fullLoop(scope: typeof demo) {
@@ -65,7 +65,7 @@ it("does nothing outside public demo mode", async () => {
 });
 
 it("wipes only the demo workspace once the hourly window has passed", async () => {
-  process.env.ROTE_PUBLIC_DEMO = "true";
+  process.env.ROTE_PUBLIC_DEMO = "true"; // guard:allow-env-credential — test toggles the demo flag
   await fullLoop(demo);
   await fullLoop(other);
   const t0 = Date.parse("2026-11-01T10:00:00Z");
