@@ -651,3 +651,56 @@ export async function parameterizePipeline(
   });
   return { id: newId, version, hash: planHash(plan) };
 }
+
+/** Scoped per-task replay totals for the overview page. Only recorded runs count. */
+export async function getOverview(scope: Scope) {
+  const tasks = await listTasks(scope);
+  const runs = await getDb()
+    .select({
+      taskId: s.runs.taskId,
+      mode: s.runs.mode,
+      status: s.runs.status,
+      durationMs: s.runs.durationMs,
+      tokensIn: s.runs.tokensIn,
+      tokensOut: s.runs.tokensOut,
+      createdAt: s.runs.createdAt,
+    })
+    .from(s.runs)
+    .where(scoped(s.runs, scope))
+    .orderBy(desc(s.runs.createdAt))
+    .limit(5000);
+  const pipelines = await getDb()
+    .select({ id: s.pipelines.id, version: s.pipelines.version })
+    .from(s.pipelines)
+    .where(scoped(s.pipelines, scope));
+  const versionOf = new Map(pipelines.map((p) => [p.id, p.version]));
+  return {
+    tasks: tasks.map((t) => {
+      const mine = runs.filter((r) => r.taskId === t.id);
+      const replays = mine.filter((r) => r.mode === "pipeline");
+      const ok = replays
+        .filter((r) => r.status === "succeeded" && r.durationMs !== null)
+        .map((r) => r.durationMs!)
+        .sort((a, b) => a - b);
+      const agent = mine.find((r) => r.mode === "agent" && r.tokensIn !== null);
+      return {
+        id: t.id,
+        name: t.name,
+        activeVersion: t.currentPipelineId
+          ? (versionOf.get(t.currentPipelineId) ?? null)
+          : null,
+        replays: ok.length,
+        driftStops: replays.filter((r) => r.status === "drift").length,
+        medianReplayMs: ok.length ? ok[Math.floor((ok.length - 1) / 2)]! : null,
+        replayTokens: replays.reduce(
+          (n, r) => n + (r.tokensIn ?? 0) + (r.tokensOut ?? 0),
+          0,
+        ),
+        agentTeachTokens: agent
+          ? agent.tokensIn! + (agent.tokensOut ?? 0)
+          : null,
+        lastRunAt: mine[0]?.createdAt ?? null,
+      };
+    }),
+  };
+}

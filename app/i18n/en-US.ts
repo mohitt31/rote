@@ -1,5 +1,37 @@
 const messages = {
   rote: {
+    home: {
+      title: "Teach it once. Never pay for it again.",
+      body: "Rote turns a repetitive agent data job into a verified, versioned pipeline. It replays every week with zero model calls and stops instead of guessing when the input changes.",
+      open: "Open recurring tasks",
+      step1: "Teach once",
+      step1Body:
+        "The agent (or you) does the job with Rote's table actions. Every step is recorded.",
+      step2: "Verify before trusting",
+      step2Body:
+        "Rote proves its check works, then replays your approved reference and an unseen holdout. You approve the exact version.",
+      step3: "Replay for free",
+      step3Body:
+        "Next week runs deterministically in milliseconds. A changed format stops the run and can be taught as a new version.",
+      yourTasks: "Your tasks",
+      active: "Active pipelines",
+      replays: "Replays",
+      replayTokens: "Model tokens spent on replays",
+      driftStops: "Stopped on drift",
+      empty:
+        "No tasks yet. Prepare a sample task to see the whole loop in a minute.",
+      task: "Task",
+      version: "Version",
+      median: "Median",
+      measured: "Measured replay benchmark",
+      measuredBody:
+        "pnpm benchmark: each sample task taught once, then 18 unseen weeks replayed and checked against an independent reference.",
+      correct: "Correct weeks",
+      medianP95: "Median / p95",
+      tokens: "Tokens",
+      honest:
+        "Sample data only. Agent-run token and time costs are not shown until a real traced model run is recorded.",
+    },
     flow: {
       addInput: "Add input",
       format: "format",
