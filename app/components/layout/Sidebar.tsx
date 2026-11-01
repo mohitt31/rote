@@ -408,7 +408,18 @@ export function Sidebar({
         )}
       >
         <HomeNavLink collapsed={collapsed} />
-        <Link to="/workbench" className="mx-2 rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent">{collapsed ? "▦" : t("rote.title")}</Link>
+        <Link
+          to="/tasks"
+          className="mx-2 rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent"
+        >
+          {collapsed ? "✓" : t("rote.tasksTitle")}
+        </Link>
+        <Link
+          to="/workbench"
+          className="mx-2 rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent"
+        >
+          {collapsed ? "▦" : t("rote.title")}
+        </Link>
         <ChatThreadsSection collapsed={collapsed} />
       </nav>
 

@@ -37,7 +37,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 - Read `docs/brief.md` for the product scope and Mohit's authorization boundaries. Work only inside this checkout. Never print or commit secrets. Do not deploy, push, create a public repository, open upstream issues/PRs, or use paid services without Mohit's approval.
 - Talk to Mohit in concise Hinglish; write code, docs, and submission material in English.
 - Use `./scripts/local pnpm ...` for the project-local runtime. Core stays pinned at 0.222.2 unless a blocking upgrade is justified.
-- Product pipelines are not implemented yet. Never fabricate benchmark data or describe planned behavior as working.
+- The deterministic approval/verification/replay implementation is present. Live model acceptance, automated repair, fallback and scheduling remain pending. Never fabricate benchmark data or describe planned behavior as working.
 - Before committing, typecheck and tests must pass. Commit identity: `git -c user.name="Mohit Prajapati" -c user.email="mohitprajapati3112@gmail.com" commit -m "..."`.
 - User-requested README/progress documentation takes precedence over the generic template instruction not to rewrite README.
 
@@ -49,3 +49,21 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 - `server/db/migrations.ts` contains additive named migrations. Do not rewrite an applied migration.
 - Local multipart uploads are deliberately unavailable with DATABASE_URL or in production. Hosted storage must use configured framework attachment storage.
 - Day 2 comparator is a tested pure function, not the complete verifier/approval product. The measured primitive benchmark excludes persistence and model work.
+
+## Day 3 workflow
+
+Read `.agents/skills/rote-pipelines/SKILL.md` when working on recorded pipelines. `/tasks` is the review and replay screen. The complete model-backed live acceptance gate is still pending; do not claim a synthetic/manual run was an agent run.
+
+| Action | Purpose |
+| --- | --- |
+| `create-task` | Establish task name and immutable numeric tolerances |
+| `prepare-payout-sample` | Prepare three synthetic weeks and a recorded training sequence; grants no approvals |
+| `approve-example` | Human approves exact named inputs, source lineage and reference output; `needsApproval: true` |
+| `crystallize-task` | Extract immutable allowlisted DAG from training step logs; freeze references |
+| `verify-pipeline` | Self-test comparator, replay training and independent holdout |
+| `promote-pipeline` | Human approves exact candidate hash; activate verified version through audited action |
+| `run-task` | Zero-model replay with drift refusal and persisted metrics/version attribution |
+| `list-tasks`, `get-task` | Scoped metadata, versions and run history |
+| `get-verification-diff` | Proven app UI only; bounded reference differences, not an agent/MCP tool |
+
+Trace projections in `server/rote/trace-evidence.ts` are read-only views of Core-owned schema, verified against pinned 0.222.2 source. Do not migrate framework tables. The public package does not export its observability store. Missing, mixed or incomplete trace evidence remains a manual run with null agent metrics. Step-log extraction is the documented fallback to captured framework traces.

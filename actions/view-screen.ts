@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { scopeFor } from "../server/rote/action-helpers.js";
 import { readTable } from "../server/rote/repository.js";
+import { taskById } from "../server/rote/workflow.js";
 
 export default defineAction({
   description:
@@ -17,7 +18,10 @@ export default defineAction({
     const screen: Record<string, unknown> = {};
     if (navigation) screen.navigation = navigation;
     const selected = await readAppState("rote-selection");
-    if (typeof selected?.tableId === "string") {
+    if (
+      typeof selected?.tableId === "string" &&
+      (navigation as { view?: string } | null)?.view === "workbench"
+    ) {
       const table = await readTable(selected.tableId, scopeFor(ctx));
       screen.table = {
         id: table.id,
@@ -28,6 +32,12 @@ export default defineAction({
       };
     }
 
+    const selectedTask = await readAppState("rote-task-selection");
+    if (
+      typeof selectedTask?.taskId === "string" &&
+      (navigation as { view?: string } | null)?.view === "tasks"
+    )
+      screen.task = await taskById(selectedTask.taskId, scopeFor(ctx));
     if (Object.keys(screen).length === 0) {
       return "No application state found. Is the app running?";
     }

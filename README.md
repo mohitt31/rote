@@ -2,7 +2,7 @@
 
 **Teach it once. Never pay for it again.**
 
-Rote is being built to turn repeated agent-led data jobs into verified, versioned deterministic pipelines. The Day 2 build includes a deterministic data workbench and tested table actions. The complete pipeline approval and replay product is still in progress.
+Rote is being built to turn repeated agent-led data jobs into verified, versioned deterministic pipelines. The Day 3 build adds a task approval, verification and deterministic replay loop. Its automated end-to-end tests use a mocked agent; the live model-and-human acceptance gate remains pending.
 
 ## Current status
 
@@ -13,7 +13,8 @@ Rote is being built to turn repeated agent-led data jobs into verified, versione
 - Gemini Flash-Lite configured through the framework; provider credentials stay in ignored `.env`.
 - Fifteen deterministic table actions, CSV/XLSX import, preview/export, scoped SQL storage and step logs. Open `/workbench`.
 - Synthetic payout/vendor generators, comparator groundwork and a measured primitive benchmark.
-- Goldens/holdout workflows, crystallization, promotion and drift handling are **not implemented yet**.
+- `/tasks`: human-approved training/holdout references, recorded-lineage crystallization, verification, exact-hash promotion and deterministic replay.
+- Drift stops replay for review. Automated repair/fallback and scheduling remain future work.
 
 ## Local setup
 
@@ -42,7 +43,7 @@ Useful commands:
 ./scripts/local pnpm action hello --name Mohit
 ```
 
-See `docs/day-2.md` for current implementation, tests, import limits and verification evidence. `docs/progress-2026-10-31.md` retains the Day 1 record.
+See `docs/day-3.md` for the core loop and acceptance limits, and `docs/day-2.md` for primitive/import details. `docs/progress-2026-10-31.md` retains the Day 1 record.
 
 ## Planned workflow
 
@@ -66,8 +67,8 @@ The verifier and reference examples will remain outside the repair model's edita
 | --- | --- | --- |
 | Shared actions | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus import, preview, list and export; tested |
 | Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, `actions/navigate.ts` | Template retained |
-| Observability | `server/plugins/rote-config.ts`, `app/routes/observability.tsx` | Capture configured; real trace pending key |
-| Approval and audit | Future `promote_pipeline` action | Planned |
+| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Capture and scoped metric import implemented; real model trace pending |
+| Approval and audit | `actions/approve-example.ts`, `actions/promote-pipeline.ts` | Framework approval gates and audit; live human acceptance pending |
 | Automations | Framework automation surface | Planned; agent-backed scheduler is not inherently zero-token |
 | Evals | Future regression fixtures from real traces | Planned |
 | CLI / HTTP / MCP | Framework action surfaces | Only surfaces actually exercised will be marked verified |

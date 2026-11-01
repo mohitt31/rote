@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "rote",
+  "displayName": "Rote",
+  "description": "Local development workflow only; not a hosted or published skill.",
+  "hosted": {"url": "http://127.0.0.1:8080"},
+  "local": {"sourcePath": ".", "defaultUrl": "http://127.0.0.1:8080", "commands": {"dev": "./scripts/local pnpm dev --host 127.0.0.1"}},
+  "skills": [{"path": ".agents/skills/rote-pipelines", "visibility": "internal"}]
+}

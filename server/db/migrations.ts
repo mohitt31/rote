@@ -21,4 +21,21 @@ CREATE TABLE rote_step_log (id TEXT PRIMARY KEY, action TEXT NOT NULL, input_tab
 CREATE INDEX rote_steps_input_idx ON rote_step_log(input_table_id);
 `,
   },
+  {
+    version: 2,
+    name: "rote_pipeline_input_bindings",
+    sql: `
+ALTER TABLE rote_tasks ADD COLUMN tolerances JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE rote_golden_examples ADD COLUMN input_bindings JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE rote_golden_examples ADD COLUMN source_output_table_id TEXT REFERENCES rote_tables(id);
+ALTER TABLE rote_runs DROP CONSTRAINT rote_runs_mode_check;
+ALTER TABLE rote_runs ADD CONSTRAINT rote_runs_mode_check CHECK(mode IN ('agent','pipeline','manual'));
+CREATE UNIQUE INDEX rote_steps_output_idx ON rote_step_log(output_table_id);
+`,
+  },
+  {
+    version: 3,
+    name: "rote_replay_pipeline_attribution",
+    sql: "ALTER TABLE rote_runs ADD COLUMN pipeline_id TEXT REFERENCES rote_pipelines(id);",
+  },
 ];

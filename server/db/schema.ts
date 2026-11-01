@@ -1,5 +1,6 @@
 import {
   pgTable,
+  type AnyPgColumn,
   text,
   jsonb,
   integer,
@@ -56,6 +57,10 @@ export const tasks = pgTable("rote_tasks", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   currentPipelineId: text("current_pipeline_id"),
+  tolerances: jsonb("tolerances")
+    .$type<Record<string, number>>()
+    .notNull()
+    .default({}),
   ownerEmail: text("owner_email").notNull(),
   orgId: text("org_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -66,6 +71,7 @@ export const runs = pgTable("rote_runs", {
   id: text("id").primaryKey(),
   taskId: text("task_id").references(() => tasks.id),
   mode: text("mode").notNull(),
+  pipelineId: text("pipeline_id").references((): AnyPgColumn => pipelines.id),
   traceRunId: text("trace_run_id"),
   tokensIn: integer("tokens_in"),
   tokensOut: integer("tokens_out"),
@@ -86,6 +92,13 @@ export const goldenExamples = pgTable("rote_golden_examples", {
   taskId: text("task_id")
     .notNull()
     .references(() => tasks.id),
+  inputBindings: jsonb("input_bindings")
+    .$type<Record<string, string>>()
+    .notNull()
+    .default({}),
+  sourceOutputTableId: text("source_output_table_id").references(
+    () => tables.id,
+  ),
   inputFileIds: jsonb("input_file_ids").$type<string[]>().notNull(),
   outputTableId: text("output_table_id")
     .notNull()

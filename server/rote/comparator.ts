@@ -92,19 +92,26 @@ export function compareTables(
     columnsMatch,
   };
 }
-export function validateComparator(golden: Table) {
+export function validateComparator(
+  golden: Table,
+  tolerances: Record<string, number> = {},
+) {
   if (!golden.rows.length)
     throw Error("Check validation requires a non-empty golden");
   const changed = structuredClone(golden),
     column = golden.columns[0]!;
   changed.rows[0]![column] =
     golden.rows[0]![column] === null ? "__corrupted__" : null;
-  const identical = compareTables(golden, golden).pass,
-    changedRejected = !compareTables(golden, changed).pass,
-    droppedRejected = !compareTables(golden, {
-      columns: golden.columns,
-      rows: golden.rows.slice(1),
-    }).pass;
+  const identical = compareTables(golden, golden, tolerances).pass,
+    changedRejected = !compareTables(golden, changed, tolerances).pass,
+    droppedRejected = !compareTables(
+      golden,
+      {
+        columns: golden.columns,
+        rows: golden.rows.slice(1),
+      },
+      tolerances,
+    ).pass;
   return {
     pass: identical && changedRejected && droppedRejected,
     identical,
