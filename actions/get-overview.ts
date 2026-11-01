@@ -2,6 +2,7 @@ import { defineAction } from "@agent-native/core/action";
 import { z } from "zod";
 
 import { errors, guarded, scopeFor } from "../server/rote/action-helpers.js";
+import { maybeResetDemo } from "../server/rote/demo.js";
 import { getOverview } from "../server/rote/workflow.js";
 export default defineAction({
   description:
@@ -25,5 +26,9 @@ export default defineAction({
   errors,
   readOnly: true,
   http: { method: "GET" },
-  run: (_, ctx) => guarded(() => getOverview(scopeFor(ctx))),
+  run: (_, ctx) =>
+    guarded(async () => {
+      await maybeResetDemo(scopeFor(ctx));
+      return getOverview(scopeFor(ctx));
+    }),
 });

@@ -2,6 +2,7 @@ import { defineAction } from "@agent-native/core/action";
 import { z } from "zod";
 
 import { scopeFor, guarded, errors } from "../server/rote/action-helpers.js";
+import { maybeResetDemo } from "../server/rote/demo.js";
 import {
   holdoutReferenceIds,
   isAppUser,
@@ -25,6 +26,7 @@ export default defineAction({
   http: { method: "GET" },
   run: (_, ctx) =>
     guarded(async () => {
+      await maybeResetDemo(scopeFor(ctx));
       const tables = await listTables(scopeFor(ctx));
       if (isAppUser(ctx)) return tables;
       const reserved = await holdoutReferenceIds(scopeFor(ctx));

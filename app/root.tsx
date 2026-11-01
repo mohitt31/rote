@@ -21,6 +21,7 @@ import {
 import type { LinksFunction } from "react-router";
 
 import { Layout as AppLayout } from "@/components/layout/Layout";
+import { DemoBanner } from "@/components/rote/DemoBanner";
 import { AppToolkitProvider } from "@/components/ui/toolkit-provider";
 import { useNavigationState } from "@/hooks/use-navigation-state";
 import { APP_TITLE } from "@/lib/app-config";
@@ -157,6 +158,7 @@ function AppContent() {
         </CommandMenu.Group>
       </CommandMenu>
       <AppLayout>
+        <DemoBanner />
         <Outlet />
       </AppLayout>
     </>

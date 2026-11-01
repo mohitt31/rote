@@ -1,5 +1,10 @@
 const messages = {
   rote: {
+    demo: {
+      banner:
+        "Public demo: sample data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
+      nextReset: "Next reset at",
+    },
     home: {
       title: "Teach it once. Never pay for it again.",
       body: "Rote turns a repetitive agent data job into a verified, versioned pipeline. It replays every week with zero model calls and stops instead of guessing when the input changes.",
