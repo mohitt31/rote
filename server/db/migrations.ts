@@ -43,4 +43,12 @@ CREATE UNIQUE INDEX rote_steps_output_idx ON rote_step_log(output_table_id);
     name: "rote_approved_example_parameters",
     sql: "ALTER TABLE rote_golden_examples ADD COLUMN parameter_values JSONB NOT NULL DEFAULT '{}';",
   },
+  {
+    version: 5,
+    name: "rote_example_generations",
+    sql: `
+ALTER TABLE rote_golden_examples ADD COLUMN generation INTEGER NOT NULL DEFAULT 1 CHECK(generation > 0);
+ALTER TABLE rote_pipelines ADD COLUMN generation INTEGER NOT NULL DEFAULT 1 CHECK(generation > 0);
+`,
+  },
 ];

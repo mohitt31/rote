@@ -52,6 +52,15 @@ async function pipelineById(id: string, scope: Scope) {
   if (!p) throw new RoteError("Pipeline not found");
   return p;
 }
+async function currentGeneration(taskId: string, scope: Scope) {
+  const rows = await getDb()
+    .select({ generation: s.goldenExamples.generation })
+    .from(s.goldenExamples)
+    .where(
+      and(eq(s.goldenExamples.taskId, taskId), scoped(s.goldenExamples, scope)),
+    );
+  return Math.max(1, ...rows.map((r) => r.generation));
+}
 async function exampleRows(taskId: string, scope: Scope) {
   return getDb()
     .select()
@@ -93,6 +102,8 @@ export async function approveExample(
     sourceOutputTableId?: string | undefined;
     holdout: boolean;
     parameterValues?: Record<string, string | number | boolean> | undefined;
+    /** Start a new example generation after the current one was crystallized. */
+    retrain?: boolean | undefined;
   },
   scope: Scope,
 ) {
@@ -107,24 +118,14 @@ export async function approveExample(
   if (args.sourceOutputTableId)
     await readTable(args.sourceOutputTableId, scope);
   const id = randomUUID();
+  let generation = 1;
   await getDb().transaction(async (tx) => {
     await tx
       .select()
       .from(s.tasks)
       .where(and(eq(s.tasks.id, args.taskId), scoped(s.tasks, scope)))
       .for("update");
-    const candidates = await tx
-      .select({ id: s.pipelines.id })
-      .from(s.pipelines)
-      .where(
-        and(eq(s.pipelines.taskId, args.taskId), scoped(s.pipelines, scope)),
-      )
-      .limit(1);
-    if (candidates.length)
-      throw new RoteError(
-        "Examples are frozen after crystallization; create another task to change reference data",
-      );
-    const existing = await tx
+    const all = await tx
       .select()
       .from(s.goldenExamples)
       .where(
@@ -133,17 +134,40 @@ export async function approveExample(
           scoped(s.goldenExamples, scope),
         ),
       );
-    if (existing.length >= 20)
-      throw new RoteError("At most 20 examples per task");
+    const current = Math.max(1, ...all.map((e) => e.generation));
+    const frozen = await tx
+      .select({ id: s.pipelines.id })
+      .from(s.pipelines)
+      .where(
+        and(
+          eq(s.pipelines.taskId, args.taskId),
+          eq(s.pipelines.generation, current),
+          scoped(s.pipelines, scope),
+        ),
+      )
+      .limit(1);
+    if (frozen.length && !args.retrain)
+      throw new RoteError(
+        "Examples are frozen after crystallization; start a new generation to teach a changed input format",
+      );
+    if (frozen.length && args.holdout)
+      throw new RoteError(
+        "Start a new generation with a training example, then add its holdout",
+      );
+    generation = frozen.length ? current + 1 : current;
+    // Binding names must match within a generation; independence holds across all.
+    const existing = all.filter((e) => e.generation === generation);
+    if (all.length >= 20) throw new RoteError("At most 20 examples per task");
     const fileIds = Object.values(inputs).map((t) => t.fileId!);
     const files = await tx.select().from(s.files).where(scoped(s.files, scope));
     const hashes = new Map(files.map((f) => [f.id, f.sha256]));
-    for (const e of existing) {
+    for (const e of existing)
       if (
         Object.keys(e.inputBindings).sort().join("|") !==
         Object.keys(args.inputs).sort().join("|")
       )
         throw new RoteError("All examples need the same input names");
+    for (const e of all) {
       if (
         e.outputTableId === args.outputTableId ||
         e.inputFileIds.some((f) =>
@@ -163,13 +187,15 @@ export async function approveExample(
       outputTableId: args.outputTableId,
       sourceOutputTableId: args.sourceOutputTableId,
       holdout: args.holdout,
+      generation,
       ...scope,
     });
   });
-  return { id };
+  return { id, generation };
 }
 export async function crystallizeTask(taskId: string, scope: Scope) {
   await taskById(taskId, scope);
+  const generation = await currentGeneration(taskId, scope);
   // Only training rows are fetched here. Holdout inputs/outputs never enter extraction.
   const [gold] = await getDb()
     .select()
@@ -178,6 +204,7 @@ export async function crystallizeTask(taskId: string, scope: Scope) {
       and(
         eq(s.goldenExamples.taskId, taskId),
         eq(s.goldenExamples.holdout, false),
+        eq(s.goldenExamples.generation, generation),
         scoped(s.goldenExamples, scope),
       ),
     )
@@ -219,6 +246,7 @@ export async function crystallizeTask(taskId: string, scope: Scope) {
         and(
           eq(s.goldenExamples.taskId, taskId),
           eq(s.goldenExamples.holdout, true),
+          eq(s.goldenExamples.generation, generation),
           scoped(s.goldenExamples, scope),
         ),
       )
@@ -251,6 +279,7 @@ export async function crystallizeTask(taskId: string, scope: Scope) {
       steps: plan,
       paramsSchema: { inputNames: plan.inputs, hash: planHash(plan) },
       status: "candidate",
+      generation,
       createdFromRunId: runId,
       ...scope,
     });
@@ -262,7 +291,9 @@ export async function verifyPipeline(id: string, scope: Scope) {
     task = await taskById(p.taskId, scope);
   if (p.status !== "candidate" && p.status !== "verified")
     throw new RoteError("Only candidate or verified pipelines can be checked");
-  const examples = await exampleRows(task.id, scope);
+  const examples = (await exampleRows(task.id, scope)).filter(
+    (e) => e.generation === p.generation,
+  );
   if (!examples.some((e) => e.holdout) || !examples.some((e) => !e.holdout))
     throw new RoteError(
       "A training example and an independent holdout are required",
@@ -545,6 +576,7 @@ export async function getTask(id: string, scope: Scope) {
       id: p.id,
       version: p.version,
       status: p.status,
+      generation: p.generation,
       hash: planHash(planSchema.parse(p.steps)),
       plan: planSchema.parse(p.steps),
       verification: v
@@ -562,7 +594,9 @@ export async function getTask(id: string, scope: Scope) {
       id: e.id,
       holdout: e.holdout,
       inputNames: Object.keys(e.inputBindings).sort(),
+      generation: e.generation,
     })),
+    generation: Math.max(1, ...examples.map((e) => e.generation)),
     versions,
     runs,
   };
@@ -611,6 +645,7 @@ export async function parameterizePipeline(
         hash: planHash(plan),
       },
       createdFromRunId: source.createdFromRunId,
+      generation: source.generation,
       ...scope,
     });
   });

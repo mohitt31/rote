@@ -75,16 +75,14 @@ export async function saveImport(
   const record = tableRecord(table, name, scope, file.sample),
     fileId = randomUUID();
   await getDb().transaction(async (tx) => {
-    await tx
-      .insert(schema.files)
-      .values({
-        id: fileId,
-        name,
-        sha256: file.sha256,
-        attachmentRef: file.attachmentRef,
-        sample: file.sample,
-        ...scope,
-      });
+    await tx.insert(schema.files).values({
+      id: fileId,
+      name,
+      sha256: file.sha256,
+      attachmentRef: file.attachmentRef,
+      sample: file.sample,
+      ...scope,
+    });
     await tx.insert(schema.tables).values({ ...record, fileId });
   });
   return summary(record);
@@ -126,18 +124,16 @@ export async function runStep(
   );
   await getDb().transaction(async (tx) => {
     await tx.insert(schema.tables).values(record);
-    await tx
-      .insert(schema.stepLog)
-      .values({
-        id: randomUUID(),
-        action: name,
-        inputTableId,
-        outputTableId: record.id,
-        params: parsed,
-        traceRunId,
-        durationMs: performance.now() - started,
-        ...scope,
-      });
+    await tx.insert(schema.stepLog).values({
+      id: randomUUID(),
+      action: name,
+      inputTableId,
+      outputTableId: record.id,
+      params: parsed,
+      traceRunId,
+      durationMs: performance.now() - started,
+      ...scope,
+    });
   });
   return summary(record);
 }

@@ -2,6 +2,17 @@ const messages = {
   rote: {
     flow: {
       addInput: "Add input",
+      format: "format",
+      formatPrepared:
+        "Weeks 4–6 imported in the bank's changed export format (sample data). Review and approve the week-4 reference to start format 2.",
+      prepareFormatChange:
+        "Prepare sample: bank changes its export (weeks 4–6)",
+      reteach: "Teach the new format",
+      reteachHint:
+        "Approved references stay frozen. A changed input format gets its own training and holdout; the current version keeps running until the new one is verified and approved.",
+      reteachStarted:
+        "New format started. Approve its holdout, then crystallize, verify and approve the new version.",
+      reteachTitle: "Input format changed?",
       prepareVendors: "Prepare sample vendor cleanup",
       askAgent: "Ask the agent to handle this week",
       changedSteps: "changed steps",
@@ -19,7 +30,7 @@ const messages = {
       columnsDiffer: "Output columns differ from the reference.",
       drift: "Stopped: drift",
       driftHelp:
-        "No output was written. Hand this week to the agent; a permanent format change currently needs a new task with fresh approved references.",
+        "No output was written. Hand this week to the agent, or teach the new format as a new version.",
       droppedRejected: "Dropped row rejected",
       emptyBody:
         "Teach a recurring data job once, approve a reference and an unseen holdout, and Rote replays the recorded steps as a verified pipeline with no model calls.",

@@ -28,13 +28,16 @@ export const taskDetailSchema = z.object({
       id: z.string(),
       holdout: z.boolean(),
       inputNames: z.array(z.string()),
+      generation: z.number(),
     }),
   ),
+  generation: z.number(),
   versions: z.array(
     z.object({
       id: z.string(),
       version: z.number(),
       status: z.string(),
+      generation: z.number(),
       hash: z.string(),
       plan: planSchema,
       verification: z
