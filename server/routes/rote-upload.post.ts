@@ -7,12 +7,11 @@ import { getSession } from "@agent-native/core/server";
 import {
   defineEventHandler,
   createError,
-  readFormData,
-  assertBodySize,
   getHeader,
   getRequestURL,
 } from "h3";
 
+import { readBoundedUpload } from "../rote/upload-body.js";
 import { MAX_FILE_BYTES } from "../rote/io.js";
 import { localUploadDirectory } from "../rote/local-files.js";
 // Local multipart protocol only. Durable hosted uploads use scoped AttachmentRefs.
@@ -25,8 +24,7 @@ export default defineEventHandler(async (event) => {
       statusCode: 403,
       statusMessage: "Same-origin upload required",
     });
-  assertBodySize(event, MAX_FILE_BYTES + 65536);
-  const body = await readFormData(event),
+  const body = await readBoundedUpload(event, MAX_FILE_BYTES + 65536),
     file = body.get("file");
   if (!(file instanceof File) || file.size > MAX_FILE_BYTES)
     throw createError({

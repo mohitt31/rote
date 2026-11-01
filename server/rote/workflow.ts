@@ -6,12 +6,13 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { Table } from "../../shared/rote/model.js";
 import {
   planSchema,
+  parameterValuesSchema,
   bindingsSchema,
   toleranceSchema,
 } from "../../shared/rote/pipeline.js";
 import { getDb, schema as s } from "../db/index.js";
 import { compareTables, validateComparator } from "./comparator.js";
-import { extractPlan, replay, planHash } from "./pipeline-engine.js";
+import { extractPlan, replay, planHash, parameterizePlan } from "./pipeline-engine.js";
 import {
   readTable,
   tableRecord,
@@ -86,6 +87,7 @@ export async function approveExample(
     outputTableId: string;
     sourceOutputTableId?: string | undefined;
     holdout: boolean;
+    parameterValues?:Record<string,string|number|boolean>|undefined;
   },
   scope: Scope,
 ) {
@@ -153,6 +155,7 @@ export async function approveExample(
         id,
         taskId: args.taskId,
         inputBindings: args.inputs,
+        parameterValues: parameterValuesSchema.parse(args.parameterValues??{}),
         inputFileIds: fileIds,
         outputTableId: args.outputTableId,
         sourceOutputTableId: args.sourceOutputTableId,
@@ -286,7 +289,7 @@ export async function verifyPipeline(id: string, scope: Scope) {
     checks.push({ exampleId: e.id, ...check });
     try {
       if (!check.pass) throw Error("Comparator self-check failed");
-      const output = replay(plan, await loadInputs(e.inputBindings, scope));
+      const output = replay(plan, await loadInputs(e.inputBindings, scope),e.parameterValues);
       const comparison = compareTables(golden, output, task.tolerances);
       results.push({
         exampleId: e.id,
@@ -413,6 +416,7 @@ export async function runTask(
   taskId: string,
   bindings: Record<string, string>,
   scope: Scope,
+  parameterValues:Record<string,string|number|boolean>={},
 ) {
   const start = performance.now(),
     task = await taskById(taskId, scope);
@@ -425,7 +429,7 @@ export async function runTask(
     id = randomUUID();
   let output: Table;
   try {
-    output = replay(p.steps, inputs);
+    output = replay(p.steps, inputs,parameterValues);
   } catch (e) {
     const durationMs = performance.now() - start;
     await getDb()
@@ -487,11 +491,13 @@ export async function runTask(
         ...scope,
       });
   });
+  const durationMs=performance.now()-start;
+  await getDb().update(s.runs).set({durationMs}).where(and(eq(s.runs.id,id),scoped(s.runs,scope)));
   return {
     id,
     status: "succeeded" as const,
     outputTableId: record.id,
-    durationMs: performance.now() - start,
+    durationMs,
     tokensIn: 0 as const,
     tokensOut: 0 as const,
     message: "Deterministic replay completed without model calls",
@@ -554,4 +560,9 @@ export async function getTask(id: string, scope: Scope) {
     versions,
     runs,
   };
+}
+
+export async function parameterizePipeline(id:string,edits:{step:number;path:(string|number)[];name:string}[],scope:Scope){
+ const source=await pipelineById(id,scope);let plan;try{plan=parameterizePlan(source.steps,edits);}catch(e){throw new RoteError(e instanceof Error?e.message:'Invalid parameter mapping');}
+ const newId=randomUUID();let version=0;await getDb().transaction(async tx=>{await tx.select().from(s.tasks).where(and(eq(s.tasks.id,source.taskId),scoped(s.tasks,scope))).for('update');const [last]=await tx.select().from(s.pipelines).where(and(eq(s.pipelines.taskId,source.taskId),scoped(s.pipelines,scope))).orderBy(desc(s.pipelines.version)).limit(1);version=(last?.version??0)+1;await tx.insert(s.pipelines).values({id:newId,taskId:source.taskId,version,status:'candidate',steps:plan,paramsSchema:{inputNames:plan.inputs,parameters:plan.parameters,hash:planHash(plan)},createdFromRunId:source.createdFromRunId,...scope});});return {id:newId,version,hash:planHash(plan)};
 }

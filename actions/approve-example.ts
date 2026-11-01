@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { errors, guarded, scopeFor } from "../server/rote/action-helpers.js";
 import { approveExample } from "../server/rote/workflow.js";
-import { bindingsSchema, toleranceSchema } from "../shared/rote/pipeline.js";
+import { bindingsSchema, toleranceSchema,parameterValuesSchema } from "../shared/rote/pipeline.js";
 import {
   taskSchema,
   taskDetailSchema,
@@ -14,6 +14,7 @@ export default defineAction({
   schema: z.object({
     taskId: z.string().uuid(),
     inputs: bindingsSchema,
+    parameterValues:parameterValuesSchema,
     outputTableId: z.string().uuid(),
     sourceOutputTableId: z.string().uuid().optional(),
     holdout: z.boolean().default(false),

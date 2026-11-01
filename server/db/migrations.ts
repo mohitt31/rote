@@ -38,4 +38,5 @@ CREATE UNIQUE INDEX rote_steps_output_idx ON rote_step_log(output_table_id);
     name: "rote_replay_pipeline_attribution",
     sql: "ALTER TABLE rote_runs ADD COLUMN pipeline_id TEXT REFERENCES rote_pipelines(id);",
   },
+  {version:4,name:"rote_approved_example_parameters",sql:"ALTER TABLE rote_golden_examples ADD COLUMN parameter_values JSONB NOT NULL DEFAULT '{}';"},
 ];
