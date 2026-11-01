@@ -50,7 +50,14 @@ export const stepSchemas = {
     .object({
       column,
       decimal: z.enum([".", ","]).default("."),
-      thousands: z.enum([",", ".", " ", ""]).default(","),
+      // Gemini rejects empty strings in tool enums, so "no separator" is
+      // "none"; legacy recorded params with "" still parse.
+      thousands: z
+        .preprocess(
+          (v) => (v === "" ? "none" : v),
+          z.enum([",", ".", " ", "none"]),
+        )
+        .default(","),
       currency: z.string().max(10).default(""),
       newColumn: column.optional(),
     })
