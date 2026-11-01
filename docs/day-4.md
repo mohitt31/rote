@@ -24,9 +24,20 @@ The first vendor pipeline deduplicated on `sku` alone, so a week with two differ
 - CLI: `AGENT_ORG_ID=<workspace org> pnpm action run-task '{"taskId":…,"inputs":{"prices":…}}'` returned `succeeded`, 0 tokens.
 - MCP: with a per-user token created on `/mcp/connect`, `tools/list` includes the four Rote tools and `tools/call run-task` returned "Deterministic replay completed without model calls". A static `ACCESS_TOKEN` carries no user identity, so Rote correctly refuses it.
 
+## Later on 1 November
+
+- **Re-teach a changed format (v2).** Examples and pipelines carry a generation (migration v5). After drift, approving a training example with `retrain` starts the next generation; crystallize and verify use only that generation; v1 keeps running until v2 is verified and approved. `prepare-format-change-sample` imports weeks 4–6 in a changed bank export. The version diff aligns steps, so the change reads as one inserted `rename columns` step plus one changed date format. Browser-verified end to end.
+- **Holdout protection.** Approved holdout references are refused to agent, MCP, A2A, CLI and automation callers in step actions (including `join`'s right table), `preview-table` and `export-table`, and hidden from their `list-tables`. Tested.
+- **`/home` overview.** Explains the loop, shows live per-task totals from recorded runs (`get-overview`) and the measured benchmark.
+- **Public demo mode.** `ROTE_PUBLIC_DEMO=true` refuses every agent request server-side (403 before inference), disables MCP, shows a banner and wipes the shared workspace on the first read after each hour. Verified locally with `AUTH_DISABLED=true`. `docs/deploy.md` lists the deploy steps; nothing was deployed.
+- **Agent setup.** The 15 step actions are preloaded as initial tools and the system prompt describes how to teach a job with recorded steps.
+- `netlify.toml` no longer carries the template's analytics IDs or trusted origins.
+- `scripts/fetch-cdsco.ts` is ready; the cloud environment blocks `cdscoonline.gov.in`, so it has not run.
+
+Checks after these changes: typecheck passes, 87/87 tests, doctor clean, benchmark 18/18 + 18/18 with 3/3 drift stops per task.
+
 ## Still pending
 
 - Real model-backed teaching run and agent token/cost/time numbers (needs the local key).
-- Re-teach a changed format as v2 in the same task; automated repair; scheduling; eval promotion from a real trace.
-- Known gap: `list-tables` and `preview-table` let the in-app agent read any owned table, including a holdout reference, if it knows to look. Holdout rows are excluded from `get-task` and the verification diff only.
-- Deployment, public demo, Clips video and Slides.
+- Automated repair loop, scheduling, eval promotion from a real trace, CDSCO task.
+- Deployment, Clips video and Slides deck (need Mohit's accounts and approval).

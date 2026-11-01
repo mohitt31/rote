@@ -1,11 +1,11 @@
 # Rote replay benchmark
 
-Sample data only. 2026-11-01T01:03:40.171Z · Intel(R) Xeon(R) Processor @ 2.10GHz · Node v22.22.0 · in-memory PGlite (same migrations as the app).
+Sample data only. 2026-11-01T01:13:24.625Z · Intel(R) Xeon(R) Processor @ 2.10GHz · Node v22.22.0 · in-memory PGlite (same migrations as the app).
 
 | Task | Teach once | Unseen weeks correct | Replay median / p95 | Model tokens per replay | Drift stopped |
 | --- | --- | --- | --- | --- | --- |
-| Batched payout reconciliation | 215 ms | 18/18 | 9.2 / 14.8 ms | 0 | 3/3 |
-| Vendor price-list cleanup | 100 ms | 18/18 | 5.6 / 7.1 ms | 0 | 3/3 |
+| Batched payout reconciliation | 229 ms | 18/18 | 8.2 / 13.6 ms | 0 | 3/3 |
+| Vendor price-list cleanup | 96 ms | 18/18 | 5.6 / 7.6 ms | 0 | 3/3 |
 
 Agent-only runs (tokens, cost, time): not measured yet; they require a real traced model run.
 
