@@ -8,6 +8,7 @@ import {
 } from "@agent-native/core/server";
 
 import type { StepName } from "../../shared/rote/model.js";
+import { assertReadable } from "./holdout-guard.js";
 import { RoteError, type Scope, runStep } from "./repository.js";
 export const errors = defineActionErrors(
   "rote_invalid_input",
@@ -39,13 +40,20 @@ export function execute(
   params: unknown,
   ctx?: ActionRunContext,
 ) {
-  return guarded(() =>
-    runStep(
+  return guarded(async () => {
+    const scope = scopeFor(ctx);
+    const right = (params as { rightTableId?: unknown } | null)?.rightTableId;
+    await assertReadable(
+      [inputTableId, typeof right === "string" ? right : undefined],
+      scope,
+      ctx,
+    );
+    return runStep(
       name,
       inputTableId,
       params,
-      scopeFor(ctx),
+      scope,
       getRequestRunContext()?.runId,
-    ),
-  );
+    );
+  });
 }
