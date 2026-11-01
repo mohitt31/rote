@@ -23,14 +23,18 @@ export const planHash = (plan: Plan) =>
   createHash("sha256")
     .update(JSON.stringify(canonical(planSchema.parse(plan))))
     .digest("hex");
-export function replay(raw: unknown, inputs: Record<string, Table>, supplied: Record<string,string|number|boolean> = {}): Table {
+export function replay(
+  raw: unknown,
+  inputs: Record<string, Table>,
+  supplied: Record<string, string | number | boolean> = {},
+): Table {
   const plan = planSchema.parse(raw),
     values = new Map<string, Table>();
   if (
     Object.keys(inputs).sort().join("|") !== [...plan.inputs].sort().join("|")
   )
     throw Error("Input names differ from pipeline");
-  const parameters=resolveParameters(plan,supplied);
+  const parameters = resolveParameters(plan, supplied);
   for (const name of plan.inputs) {
     const t = inputs[name]!;
     checkTable(t);
@@ -47,7 +51,9 @@ export function replay(raw: unknown, inputs: Record<string, Table>, supplied: Re
       (step.action !== "join" && step.right)
     )
       throw Error("Invalid pipeline dependency");
-    const params = stepSchemas[step.action].parse(substituteParameters(step.params,parameters));
+    const params = stepSchemas[step.action].parse(
+      substituteParameters(step.params, parameters),
+    );
     const output = applyStep(step.action, input, params, right);
     checkTable(output);
     values.set(`step:${i}`, output);
@@ -125,23 +131,101 @@ export async function extractPlan(
   });
 }
 
-export function resolveParameters(plan:Plan,supplied:Record<string,string|number|boolean>){
- const result:Record<string,string|number|boolean>={};
- for(const key of Object.keys(supplied))if(!Object.prototype.hasOwnProperty.call(plan.parameters??{},key))throw Error('Unknown pipeline parameter: '+key);
- for(const [name,definition] of Object.entries(plan.parameters??{})){const value=Object.prototype.hasOwnProperty.call(supplied,name)?supplied[name]!:definition.default;if(typeof value!==definition.type||(typeof value==='number'&&!Number.isFinite(value)))throw Error('Invalid parameter type: '+name);result[name]=value;}return result;
+export function resolveParameters(
+  plan: Plan,
+  supplied: Record<string, string | number | boolean>,
+) {
+  const result: Record<string, string | number | boolean> = {};
+  for (const key of Object.keys(supplied))
+    if (!Object.prototype.hasOwnProperty.call(plan.parameters ?? {}, key))
+      throw Error("Unknown pipeline parameter: " + key);
+  for (const [name, definition] of Object.entries(plan.parameters ?? {})) {
+    const value = Object.prototype.hasOwnProperty.call(supplied, name)
+      ? supplied[name]!
+      : definition.default;
+    if (
+      typeof value !== definition.type ||
+      (typeof value === "number" && !Number.isFinite(value))
+    )
+      throw Error("Invalid parameter type: " + name);
+    result[name] = value;
+  }
+  return result;
 }
-export function substituteParameters(value:unknown,values:Record<string,string|number|boolean>):unknown{
- if(Array.isArray(value))return value.map(v=>substituteParameters(v,values));
- if(value&&typeof value==='object'){const entries=Object.entries(value);if(entries.length===1&&entries[0]![0]==='$param'){const name=entries[0]![1];if(typeof name!=='string'||!Object.prototype.hasOwnProperty.call(values,name))throw Error('Undefined parameter reference');return values[name];}return Object.fromEntries(entries.map(([k,v])=>[k,substituteParameters(v,values)]));}return value;
+export function substituteParameters(
+  value: unknown,
+  values: Record<string, string | number | boolean>,
+): unknown {
+  if (Array.isArray(value))
+    return value.map((v) => substituteParameters(v, values));
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length === 1 && entries[0]![0] === "$param") {
+      const name = entries[0]![1];
+      if (
+        typeof name !== "string" ||
+        !Object.prototype.hasOwnProperty.call(values, name)
+      )
+        throw Error("Undefined parameter reference");
+      return values[name];
+    }
+    return Object.fromEntries(
+      entries.map(([k, v]) => [k, substituteParameters(v, values)]),
+    );
+  }
+  return value;
 }
-export function parameterizePlan(raw:unknown,edits:{step:number;path:(string|number)[];name:string}[]):Plan {
- const plan=structuredClone(planSchema.parse(raw));plan.parameters??={};
- for(const edit of edits){const step=plan.steps[edit.step];if(!step)throw Error('Step does not exist');let target:unknown=step.params;
-  for(const key of edit.path.slice(0,-1)){if(['__proto__','constructor','prototype'].includes(String(key))||!target||typeof target!=='object'||!Object.prototype.hasOwnProperty.call(target,key))throw Error('Invalid parameter path');target=(target as Record<string,unknown>)[key];}
-  const key=edit.path[edit.path.length-1]!;if(['__proto__','constructor','prototype','rightTableId'].includes(String(key))||!target||typeof target!=='object'||!Object.prototype.hasOwnProperty.call(target,key))throw Error('Invalid parameter path');
-  const value=(target as Record<string,unknown>)[key];if(typeof value!=='string'&&typeof value!=='number'&&typeof value!=='boolean')throw Error('Only existing scalar parameters can be generalized');
-  const existing=plan.parameters[edit.name];if(existing&&(existing.type!==typeof value||existing.default!==value))throw Error('Shared parameter defaults differ');
-  plan.parameters[edit.name]={type:typeof value as 'string'|'number'|'boolean',default:value};(target as Record<string,unknown>)[key]={$param:edit.name};
- }
- const defaults=resolveParameters(plan,{});for(const step of plan.steps)stepSchemas[step.action].parse(substituteParameters(step.params,defaults));return planSchema.parse(plan);
+export function parameterizePlan(
+  raw: unknown,
+  edits: { step: number; path: (string | number)[]; name: string }[],
+): Plan {
+  const plan = structuredClone(planSchema.parse(raw));
+  plan.parameters ??= {};
+  for (const edit of edits) {
+    const step = plan.steps[edit.step];
+    if (!step) throw Error("Step does not exist");
+    let target: unknown = step.params;
+    for (const key of edit.path.slice(0, -1)) {
+      if (
+        ["__proto__", "constructor", "prototype"].includes(String(key)) ||
+        !target ||
+        typeof target !== "object" ||
+        !Object.prototype.hasOwnProperty.call(target, key)
+      )
+        throw Error("Invalid parameter path");
+      target = (target as Record<string, unknown>)[key];
+    }
+    const key = edit.path[edit.path.length - 1]!;
+    if (
+      ["__proto__", "constructor", "prototype", "rightTableId"].includes(
+        String(key),
+      ) ||
+      !target ||
+      typeof target !== "object" ||
+      !Object.prototype.hasOwnProperty.call(target, key)
+    )
+      throw Error("Invalid parameter path");
+    const value = (target as Record<string, unknown>)[key];
+    if (
+      typeof value !== "string" &&
+      typeof value !== "number" &&
+      typeof value !== "boolean"
+    )
+      throw Error("Only existing scalar parameters can be generalized");
+    const existing = plan.parameters[edit.name];
+    if (
+      existing &&
+      (existing.type !== typeof value || existing.default !== value)
+    )
+      throw Error("Shared parameter defaults differ");
+    plan.parameters[edit.name] = {
+      type: typeof value as "string" | "number" | "boolean",
+      default: value,
+    };
+    (target as Record<string, unknown>)[key] = { $param: edit.name };
+  }
+  const defaults = resolveParameters(plan, {});
+  for (const step of plan.steps)
+    stepSchemas[step.action].parse(substituteParameters(step.params, defaults));
+  return planSchema.parse(plan);
 }

@@ -92,7 +92,10 @@ export const goldenExamples = pgTable("rote_golden_examples", {
   taskId: text("task_id")
     .notNull()
     .references(() => tasks.id),
-  parameterValues: jsonb("parameter_values").$type<Record<string,string|number|boolean>>().notNull().default({}),
+  parameterValues: jsonb("parameter_values")
+    .$type<Record<string, string | number | boolean>>()
+    .notNull()
+    .default({}),
   inputBindings: jsonb("input_bindings")
     .$type<Record<string, string>>()
     .notNull()

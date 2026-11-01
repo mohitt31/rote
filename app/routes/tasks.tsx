@@ -4,13 +4,16 @@ import { useT } from "@agent-native/core/client/i18n";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
+import { ParameterizePipeline } from "@/components/ParameterizePipeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { VerificationDiff } from "@/components/VerificationDiff";
 
-import { ParameterizePipeline } from "@/components/ParameterizePipeline";
-import { bindingsSchema,parameterValuesSchema } from "../../shared/rote/pipeline";
+import {
+  bindingsSchema,
+  parameterValuesSchema,
+} from "../../shared/rote/pipeline";
 type Draft = {
   taskId: string;
   training: {
@@ -43,7 +46,7 @@ export default function Tasks() {
     [notice, setNotice] = useState(""),
     [name, setName] = useState(""),
     [inputs, setInputs] = useState("{}"),
-    [parameterValues,setParameterValues]=useState("{}"),
+    [parameterValues, setParameterValues] = useState("{}"),
     [output, setOutput] = useState(""),
     [source, setSource] = useState(""),
     [holdout, setHoldout] = useState(false),
@@ -206,7 +209,19 @@ export default function Tasks() {
                     onChange={(e) => setInputs(e.target.value)}
                   />
                 </label>
-                <details><summary className="cursor-pointer text-sm">{t("rote.parameterValues")}</summary><label className="mt-2 grid gap-1 text-sm">{t("rote.parameterValuesHelp")}<Textarea className="font-mono text-xs" value={parameterValues} onChange={e=>setParameterValues(e.target.value)}/></label></details>
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    {t("rote.parameterValues")}
+                  </summary>
+                  <label className="mt-2 grid gap-1 text-sm">
+                    {t("rote.parameterValuesHelp")}
+                    <Textarea
+                      className="font-mono text-xs"
+                      value={parameterValues}
+                      onChange={(e) => setParameterValues(e.target.value)}
+                    />
+                  </label>
+                </details>
                 <label className="grid gap-1 text-sm">
                   {t("rote.referenceOutput")}
                   <Input
@@ -246,7 +261,9 @@ export default function Tasks() {
                       await callAction("approve-example", {
                         taskId: id,
                         inputs: bindingsSchema.parse(JSON.parse(inputs)),
-                        parameterValues:parameterValuesSchema.parse(JSON.parse(parameterValues)),
+                        parameterValues: parameterValuesSchema.parse(
+                          JSON.parse(parameterValues),
+                        ),
                         outputTableId: output,
                         ...(source ? { sourceOutputTableId: source } : {}),
                         holdout,
@@ -306,7 +323,12 @@ export default function Tasks() {
                       {JSON.stringify(v.verification, null, 2)}
                     </pre>
                   )}
-                  <ParameterizePipeline id={v.id} onDone={()=>{void detail.refetch();}}/>
+                  <ParameterizePipeline
+                    id={v.id}
+                    onDone={() => {
+                      void detail.refetch();
+                    }}
+                  />
                   {v.verification && (
                     <VerificationDiff id={v.verification.id} />
                   )}
@@ -360,7 +382,9 @@ export default function Tasks() {
                       const r = await callAction("run-task", {
                         taskId: id,
                         inputs: bindingsSchema.parse(JSON.parse(inputs)),
-                        parameterValues:parameterValuesSchema.parse(JSON.parse(parameterValues)),
+                        parameterValues: parameterValuesSchema.parse(
+                          JSON.parse(parameterValues),
+                        ),
                       });
                       setNotice(`${r.message} · ${r.durationMs.toFixed(1)} ms`);
                     })

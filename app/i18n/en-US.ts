@@ -1,11 +1,13 @@
 const messages = {
   rote: {
-    parameterize:"Generalize scalar parameters",
-    parameterizeHelp:"Map existing step values to named parameters. Step indexes start at 0; paths are relative to step parameters. This creates a new candidate requiring verification and approval.",
-    parameterMappings:"Mappings (JSON)",
-    createCandidate:"Create parameterized candidate",
-    parameterValues:"Optional named parameter values",
-    parameterValuesHelp:"Values are frozen with an approved example, or supplied to the next replay (JSON).",
+    parameterize: "Generalize scalar parameters",
+    parameterizeHelp:
+      "Map existing step values to named parameters. Step indexes start at 0; paths are relative to step parameters. This creates a new candidate requiring verification and approval.",
+    parameterMappings: "Mappings (JSON)",
+    createCandidate: "Create parameterized candidate",
+    parameterValues: "Optional named parameter values",
+    parameterValuesHelp:
+      "Values are frozen with an approved example, or supplied to the next replay (JSON).",
     showDiff: "Show verification row differences",
     tasksTitle: "Recurring tasks",
     tasksSubtitle:

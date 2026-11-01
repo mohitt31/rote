@@ -4,16 +4,11 @@ import path from "node:path";
 
 import { getOrgContext } from "@agent-native/core/org";
 import { getSession } from "@agent-native/core/server";
-import {
-  defineEventHandler,
-  createError,
-  getHeader,
-  getRequestURL,
-} from "h3";
+import { defineEventHandler, createError, getHeader, getRequestURL } from "h3";
 
-import { readBoundedUpload } from "../rote/upload-body.js";
 import { MAX_FILE_BYTES } from "../rote/io.js";
 import { localUploadDirectory } from "../rote/local-files.js";
+import { readBoundedUpload } from "../rote/upload-body.js";
 // Local multipart protocol only. Durable hosted uploads use scoped AttachmentRefs.
 export default defineEventHandler(async (event) => {
   const session = await getSession(event);

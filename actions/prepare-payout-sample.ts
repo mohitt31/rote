@@ -13,7 +13,9 @@ const example = z.object({
 export default defineAction({
   description:
     "Prepare a synthetic three-week payout demo and reference outputs for human review. Uses no model, grants no approval, and creates no active pipeline.",
-  schema: z.object({scenario:z.enum(["basic","batched"]).default("batched")}),
+  schema: z.object({
+    scenario: z.enum(["basic", "batched"]).default("batched"),
+  }),
   outputSchema: z.object({
     taskId: z.string(),
     training: example,
@@ -21,5 +23,10 @@ export default defineAction({
     next: example,
   }),
   errors,
-  run: ({scenario}, ctx) => guarded(() => scenario==="batched"?prepareBatchedSample(scopeFor(ctx)):preparePayoutSample(scopeFor(ctx))),
+  run: ({ scenario }, ctx) =>
+    guarded(() =>
+      scenario === "batched"
+        ? prepareBatchedSample(scopeFor(ctx))
+        : preparePayoutSample(scopeFor(ctx)),
+    ),
 });

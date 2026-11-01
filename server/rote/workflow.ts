@@ -12,7 +12,12 @@ import {
 } from "../../shared/rote/pipeline.js";
 import { getDb, schema as s } from "../db/index.js";
 import { compareTables, validateComparator } from "./comparator.js";
-import { extractPlan, replay, planHash, parameterizePlan } from "./pipeline-engine.js";
+import {
+  extractPlan,
+  replay,
+  planHash,
+  parameterizePlan,
+} from "./pipeline-engine.js";
 import {
   readTable,
   tableRecord,
@@ -87,7 +92,7 @@ export async function approveExample(
     outputTableId: string;
     sourceOutputTableId?: string | undefined;
     holdout: boolean;
-    parameterValues?:Record<string,string|number|boolean>|undefined;
+    parameterValues?: Record<string, string | number | boolean> | undefined;
   },
   scope: Scope,
 ) {
@@ -149,19 +154,17 @@ export async function approveExample(
           "Examples must use independent input files and outputs",
         );
     }
-    await tx
-      .insert(s.goldenExamples)
-      .values({
-        id,
-        taskId: args.taskId,
-        inputBindings: args.inputs,
-        parameterValues: parameterValuesSchema.parse(args.parameterValues??{}),
-        inputFileIds: fileIds,
-        outputTableId: args.outputTableId,
-        sourceOutputTableId: args.sourceOutputTableId,
-        holdout: args.holdout,
-        ...scope,
-      });
+    await tx.insert(s.goldenExamples).values({
+      id,
+      taskId: args.taskId,
+      inputBindings: args.inputs,
+      parameterValues: parameterValuesSchema.parse(args.parameterValues ?? {}),
+      inputFileIds: fileIds,
+      outputTableId: args.outputTableId,
+      sourceOutputTableId: args.sourceOutputTableId,
+      holdout: args.holdout,
+      ...scope,
+    });
   });
   return { id };
 }
@@ -231,30 +234,26 @@ export async function crystallizeTask(taskId: string, scope: Scope) {
       .orderBy(desc(s.pipelines.version))
       .limit(1);
     version = (last?.version ?? 0) + 1;
-    await tx
-      .insert(s.runs)
-      .values({
-        id: runId,
-        taskId,
-        mode: evidence ? "agent" : "manual",
-        status: "succeeded",
-        outputTableId: gold.sourceOutputTableId,
-        approvedBy: scope.ownerEmail,
-        ...(evidence ?? {}),
-        ...scope,
-      });
-    await tx
-      .insert(s.pipelines)
-      .values({
-        id,
-        taskId,
-        version,
-        steps: plan,
-        paramsSchema: { inputNames: plan.inputs, hash: planHash(plan) },
-        status: "candidate",
-        createdFromRunId: runId,
-        ...scope,
-      });
+    await tx.insert(s.runs).values({
+      id: runId,
+      taskId,
+      mode: evidence ? "agent" : "manual",
+      status: "succeeded",
+      outputTableId: gold.sourceOutputTableId,
+      approvedBy: scope.ownerEmail,
+      ...(evidence ?? {}),
+      ...scope,
+    });
+    await tx.insert(s.pipelines).values({
+      id,
+      taskId,
+      version,
+      steps: plan,
+      paramsSchema: { inputNames: plan.inputs, hash: planHash(plan) },
+      status: "candidate",
+      createdFromRunId: runId,
+      ...scope,
+    });
   });
   return { id, version, hash: planHash(plan), stepCount: plan.steps.length };
 }
@@ -289,7 +288,11 @@ export async function verifyPipeline(id: string, scope: Scope) {
     checks.push({ exampleId: e.id, ...check });
     try {
       if (!check.pass) throw Error("Comparator self-check failed");
-      const output = replay(plan, await loadInputs(e.inputBindings, scope),e.parameterValues);
+      const output = replay(
+        plan,
+        await loadInputs(e.inputBindings, scope),
+        e.parameterValues,
+      );
       const comparison = compareTables(golden, output, task.tolerances);
       results.push({
         exampleId: e.id,
@@ -321,22 +324,20 @@ export async function verifyPipeline(id: string, scope: Scope) {
       .where(and(eq(s.pipelines.id, id), scoped(s.pipelines, scope)));
     if (!current || !["candidate", "verified"].includes(current.status))
       throw new RoteError("Pipeline changed during verification");
-    await tx
-      .insert(s.verifications)
-      .values({
-        id: verificationId,
-        pipelineId: id,
-        checkValidationResult: {
-          pass: checks.every((c) => c.pass),
-          checks,
-          hash,
-          exampleIds: examples.map((e) => e.id),
-        },
-        exampleResults: results,
-        rowDiff: diffs,
-        attempts: [],
-        ...scope,
-      });
+    await tx.insert(s.verifications).values({
+      id: verificationId,
+      pipelineId: id,
+      checkValidationResult: {
+        pass: checks.every((c) => c.pass),
+        checks,
+        hash,
+        exampleIds: examples.map((e) => e.id),
+      },
+      exampleResults: results,
+      rowDiff: diffs,
+      attempts: [],
+      ...scope,
+    });
     await tx
       .update(s.pipelines)
       .set({ status: pass ? "verified" : "candidate" })
@@ -416,7 +417,7 @@ export async function runTask(
   taskId: string,
   bindings: Record<string, string>,
   scope: Scope,
-  parameterValues:Record<string,string|number|boolean>={},
+  parameterValues: Record<string, string | number | boolean> = {},
 ) {
   const start = performance.now(),
     task = await taskById(taskId, scope);
@@ -429,7 +430,7 @@ export async function runTask(
     id = randomUUID();
   let output: Table;
   try {
-    output = replay(p.steps, inputs,parameterValues);
+    output = replay(p.steps, inputs, parameterValues);
   } catch (e) {
     const durationMs = performance.now() - start;
     await getDb()
@@ -470,29 +471,30 @@ export async function runTask(
   );
   await getDb().transaction(async (tx) => {
     await tx.insert(s.tables).values(record);
-    await tx
-      .insert(s.runs)
-      .values({
-        id,
-        taskId,
-        pipelineId: p.id,
-        mode: "pipeline",
-        status: "succeeded",
-        tokensIn: 0,
-        tokensOut: 0,
-        cost: 0,
-        durationMs: performance.now() - start,
-        outputTableId: record.id,
-        inputFingerprint: JSON.stringify(
-          Object.fromEntries(
-            Object.entries(inputs).map(([n, t]) => [n, t.fingerprint]),
-          ),
+    await tx.insert(s.runs).values({
+      id,
+      taskId,
+      pipelineId: p.id,
+      mode: "pipeline",
+      status: "succeeded",
+      tokensIn: 0,
+      tokensOut: 0,
+      cost: 0,
+      durationMs: performance.now() - start,
+      outputTableId: record.id,
+      inputFingerprint: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(inputs).map(([n, t]) => [n, t.fingerprint]),
         ),
-        ...scope,
-      });
+      ),
+      ...scope,
+    });
   });
-  const durationMs=performance.now()-start;
-  await getDb().update(s.runs).set({durationMs}).where(and(eq(s.runs.id,id),scoped(s.runs,scope)));
+  const durationMs = performance.now() - start;
+  await getDb()
+    .update(s.runs)
+    .set({ durationMs })
+    .where(and(eq(s.runs.id, id), scoped(s.runs, scope)));
   return {
     id,
     status: "succeeded" as const,
@@ -562,7 +564,53 @@ export async function getTask(id: string, scope: Scope) {
   };
 }
 
-export async function parameterizePipeline(id:string,edits:{step:number;path:(string|number)[];name:string}[],scope:Scope){
- const source=await pipelineById(id,scope);let plan;try{plan=parameterizePlan(source.steps,edits);}catch(e){throw new RoteError(e instanceof Error?e.message:'Invalid parameter mapping');}
- const newId=randomUUID();let version=0;await getDb().transaction(async tx=>{await tx.select().from(s.tasks).where(and(eq(s.tasks.id,source.taskId),scoped(s.tasks,scope))).for('update');const [last]=await tx.select().from(s.pipelines).where(and(eq(s.pipelines.taskId,source.taskId),scoped(s.pipelines,scope))).orderBy(desc(s.pipelines.version)).limit(1);version=(last?.version??0)+1;await tx.insert(s.pipelines).values({id:newId,taskId:source.taskId,version,status:'candidate',steps:plan,paramsSchema:{inputNames:plan.inputs,parameters:plan.parameters,hash:planHash(plan)},createdFromRunId:source.createdFromRunId,...scope});});return {id:newId,version,hash:planHash(plan)};
+export async function parameterizePipeline(
+  id: string,
+  edits: { step: number; path: (string | number)[]; name: string }[],
+  scope: Scope,
+) {
+  const source = await pipelineById(id, scope);
+  let plan;
+  try {
+    plan = parameterizePlan(source.steps, edits);
+  } catch (e) {
+    throw new RoteError(
+      e instanceof Error ? e.message : "Invalid parameter mapping",
+    );
+  }
+  const newId = randomUUID();
+  let version = 0;
+  await getDb().transaction(async (tx) => {
+    await tx
+      .select()
+      .from(s.tasks)
+      .where(and(eq(s.tasks.id, source.taskId), scoped(s.tasks, scope)))
+      .for("update");
+    const [last] = await tx
+      .select()
+      .from(s.pipelines)
+      .where(
+        and(eq(s.pipelines.taskId, source.taskId), scoped(s.pipelines, scope)),
+      )
+      .orderBy(desc(s.pipelines.version))
+      .limit(1);
+    version = (last?.version ?? 0) + 1;
+    await tx
+      .insert(s.pipelines)
+      .values({
+        id: newId,
+        taskId: source.taskId,
+        version,
+        status: "candidate",
+        steps: plan,
+        paramsSchema: {
+          inputNames: plan.inputs,
+          parameters: plan.parameters,
+          hash: planHash(plan),
+        },
+        createdFromRunId: source.createdFromRunId,
+        ...scope,
+      });
+  });
+  return { id: newId, version, hash: planHash(plan) };
 }

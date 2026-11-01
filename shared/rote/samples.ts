@@ -39,28 +39,113 @@ export function vendorSample(week: number) {
 }
 
 // Enhanced fixture: transaction batches, three-day bank delay, refunds and integer-cent fees.
-export function batchedPayoutSample(week:number){
- if(!Number.isInteger(week)||week<1||week>20)throw Error('Sample week must be 1–20');
- let seed=9100+week;const random=()=> (seed=(1664525*seed+1013904223)>>>0)/4294967296;
- const csv=(rows:(string|number)[][])=>rows.map(r=>r.map(v=>{const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n')+'\n';
- const iso=(d:Date)=>d.toISOString().slice(0,10),day=(n:number)=>new Date(Date.UTC(2026,0,5+(week-1)*7+n));
- const payouts:(string|number)[][]=[['transaction_id','settlement_id','expected_date','gross_cents','fee_cents','net_cents','status']];
- const groups=new Map<string,{net:number;count:number;date:string;delay:number}>();
- for(let i=0;i<25;i++){
-  const refund=i%9===0,gross=(refund?-1:1)*(1000+Math.floor(random()*99000));
-  const fee=refund?0:Math.floor((gross*29+500)/1000),net=gross-fee;
-  const group=refund?`refund_${week}_${i}`:`batch_${week}_${Math.floor(i/5)}`;
-  const offset=Math.floor(i/5),date=iso(day(offset)),delay=1+((week+offset)%3);
-  payouts.push([`tx_${week}_${i}`,group,date,gross,fee,net,refund?'refund':'paid']);
-  const previous=groups.get(group);if(previous){previous.net+=net;previous.count++;}else groups.set(group,{net,count:1,date,delay});
- }
- const bank:(string|number)[][]=[['reference','booking_date','amount_minor','currency','display_amount','description']];
- const expectedRows=[];
- for(const [id,g] of groups){const booked=new Date(g.date+'T00:00:00Z');booked.setUTCDate(booked.getUTCDate()+g.delay);const date=`${String(booked.getUTCDate()).padStart(2,'0')}/${String(booked.getUTCMonth()+1).padStart(2,'0')}/${booked.getUTCFullYear()}`;
-  const grouped=Math.abs(g.net).toLocaleString('en-US'),minor=g.net<0?`(${grouped})`:grouped,display=(Math.abs(g.net)/100).toFixed(2);
-  bank.push([id,date,minor,'USD',g.net<0?`($${display})`:`$${display}`,`Synthetic settlement of ${g.count} transactions`]);
-  expectedRows.push({settlement_id:id,net_cents:g.net,amount_minor:g.net,transaction_count:g.count,delta_cents:0});
- }
- // Reverse bank row order to make accidental positional matching fail.
- return {payouts:csv(payouts),bank:csv([bank[0]!,...bank.slice(1).reverse()]),expected:{columns:['settlement_id','net_cents','amount_minor','transaction_count','delta_cents'],rows:expectedRows}};
+export function batchedPayoutSample(week: number) {
+  if (!Number.isInteger(week) || week < 1 || week > 20)
+    throw Error("Sample week must be 1–20");
+  let seed = 9100 + week;
+  const random = () =>
+    (seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296;
+  const csv = (rows: (string | number)[][]) =>
+    rows
+      .map((r) =>
+        r
+          .map((v) => {
+            const s = String(v);
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          })
+          .join(","),
+      )
+      .join("\n") + "\n";
+  const iso = (d: Date) => d.toISOString().slice(0, 10),
+    day = (n: number) => new Date(Date.UTC(2026, 0, 5 + (week - 1) * 7 + n));
+  const payouts: (string | number)[][] = [
+    [
+      "transaction_id",
+      "settlement_id",
+      "expected_date",
+      "gross_cents",
+      "fee_cents",
+      "net_cents",
+      "status",
+    ],
+  ];
+  const groups = new Map<
+    string,
+    { net: number; count: number; date: string; delay: number }
+  >();
+  for (let i = 0; i < 25; i++) {
+    const refund = i % 9 === 0,
+      gross = (refund ? -1 : 1) * (1000 + Math.floor(random() * 99000));
+    const fee = refund ? 0 : Math.floor((gross * 29 + 500) / 1000),
+      net = gross - fee;
+    const group = refund
+      ? `refund_${week}_${i}`
+      : `batch_${week}_${Math.floor(i / 5)}`;
+    const offset = Math.floor(i / 5),
+      date = iso(day(offset)),
+      delay = 1 + ((week + offset) % 3);
+    payouts.push([
+      `tx_${week}_${i}`,
+      group,
+      date,
+      gross,
+      fee,
+      net,
+      refund ? "refund" : "paid",
+    ]);
+    const previous = groups.get(group);
+    if (previous) {
+      previous.net += net;
+      previous.count++;
+    } else groups.set(group, { net, count: 1, date, delay });
+  }
+  const bank: (string | number)[][] = [
+    [
+      "reference",
+      "booking_date",
+      "amount_minor",
+      "currency",
+      "display_amount",
+      "description",
+    ],
+  ];
+  const expectedRows = [];
+  for (const [id, g] of groups) {
+    const booked = new Date(g.date + "T00:00:00Z");
+    booked.setUTCDate(booked.getUTCDate() + g.delay);
+    const date = `${String(booked.getUTCDate()).padStart(2, "0")}/${String(booked.getUTCMonth() + 1).padStart(2, "0")}/${booked.getUTCFullYear()}`;
+    const grouped = Math.abs(g.net).toLocaleString("en-US"),
+      minor = g.net < 0 ? `(${grouped})` : grouped,
+      display = (Math.abs(g.net) / 100).toFixed(2);
+    bank.push([
+      id,
+      date,
+      minor,
+      "USD",
+      g.net < 0 ? `($${display})` : `$${display}`,
+      `Synthetic settlement of ${g.count} transactions`,
+    ]);
+    expectedRows.push({
+      settlement_id: id,
+      net_cents: g.net,
+      amount_minor: g.net,
+      transaction_count: g.count,
+      delta_cents: 0,
+    });
+  }
+  // Reverse bank row order to make accidental positional matching fail.
+  return {
+    payouts: csv(payouts),
+    bank: csv([bank[0]!, ...bank.slice(1).reverse()]),
+    expected: {
+      columns: [
+        "settlement_id",
+        "net_cents",
+        "amount_minor",
+        "transaction_count",
+        "delta_cents",
+      ],
+      rows: expectedRows,
+    },
+  };
 }

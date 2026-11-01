@@ -307,22 +307,135 @@ it("stops replay when same-schema amounts violate recorded validation", async ()
   expect(result.message).toMatch(/validation failed/);
 });
 
-it('reconciles batched settlements, refunds and delayed/reordered bank rows on an unseen week',async()=>{
- const {prepareBatchedSample}=await import('../server/rote/batched-sample.js');const fixture=await prepareBatchedSample(scope);
- await approveExample({taskId:fixture.taskId,inputs:fixture.training.inputs,outputTableId:fixture.training.outputTableId!,sourceOutputTableId:fixture.training.sourceOutputTableId!,holdout:false},scope);
- await approveExample({taskId:fixture.taskId,inputs:fixture.holdout.inputs,outputTableId:fixture.holdout.outputTableId!,holdout:true},scope);
- const p=await crystallizeTask(fixture.taskId,scope);expect((await verifyPipeline(p.id,scope)).pass).toBe(true);await promotePipeline(p.id,p.hash,scope);
- const out=await runTask(fixture.taskId,fixture.next.inputs,scope);expect(out.status).toBe('succeeded');const {batchedPayoutSample}=await import('../shared/rote/samples.js');expect(compareTables(batchedPayoutSample(3).expected,await readTable(out.outputTableId!,scope)).pass).toBe(true);
- const bank=await readTable(fixture.next.inputs.bank,scope);bank.rows[0]!.booking_date='01/01/2025';const late=await saveImport(bank,'out-of-window',scope,{sha256:'bad-window',sample:true});expect((await runTask(fixture.taskId,{...fixture.next.inputs,bank:late.outputTableId},scope)).status).toBe('drift');
+it("reconciles batched settlements, refunds and delayed/reordered bank rows on an unseen week", async () => {
+  const { prepareBatchedSample } =
+    await import("../server/rote/batched-sample.js");
+  const fixture = await prepareBatchedSample(scope);
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.training.inputs,
+      outputTableId: fixture.training.outputTableId!,
+      sourceOutputTableId: fixture.training.sourceOutputTableId!,
+      holdout: false,
+    },
+    scope,
+  );
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.holdout.inputs,
+      outputTableId: fixture.holdout.outputTableId!,
+      holdout: true,
+    },
+    scope,
+  );
+  const p = await crystallizeTask(fixture.taskId, scope);
+  expect((await verifyPipeline(p.id, scope)).pass).toBe(true);
+  await promotePipeline(p.id, p.hash, scope);
+  const out = await runTask(fixture.taskId, fixture.next.inputs, scope);
+  expect(out.status).toBe("succeeded");
+  const { batchedPayoutSample } = await import("../shared/rote/samples.js");
+  expect(
+    compareTables(
+      batchedPayoutSample(3).expected,
+      await readTable(out.outputTableId!, scope),
+    ).pass,
+  ).toBe(true);
+  const bank = await readTable(fixture.next.inputs.bank, scope);
+  bank.rows[0]!.booking_date = "01/01/2025";
+  const late = await saveImport(bank, "out-of-window", scope, {
+    sha256: "bad-window",
+    sample: true,
+  });
+  expect(
+    (
+      await runTask(
+        fixture.taskId,
+        { ...fixture.next.inputs, bank: late.outputTableId },
+        scope,
+      )
+    ).status,
+  ).toBe("drift");
 });
-it('generalizes an existing scalar without modifying frozen examples or approved versions',async()=>{
- const {parameterizePipeline}=await import('../server/rote/workflow.js');const task=await createTask('Currency parsing','',{},scope);
- const training=await saveImport({columns:['amount'],rows:[{amount:'$12.50'}]},'dollars',scope,{sha256:'dollars',sample:true}),hold=await saveImport({columns:['amount'],rows:[{amount:'€25.00'}]},'euros',scope,{sha256:'euros',sample:true});
- const source=await runStep('parse_number',training.outputTableId,{column:'amount',currency:'$'},scope);
- const reference=await saveImport({columns:['amount'],rows:[{amount:25}]},'euro reference',scope,{sha256:'euro-reference',sample:true});
- await approveExample({taskId:task.id,inputs:{input:training.outputTableId},outputTableId:source.outputTableId,sourceOutputTableId:source.outputTableId,holdout:false,parameterValues:{currency:'$'}},scope);
- await approveExample({taskId:task.id,inputs:{input:hold.outputTableId},outputTableId:reference.outputTableId,holdout:true,parameterValues:{currency:'€'}},scope);
- const original=await crystallizeTask(task.id,scope);expect((await verifyPipeline(original.id,scope)).pass).toBe(false);
- const edited=await parameterizePipeline(original.id,[{step:0,path:['currency'],name:'currency'}],scope);expect(edited.version).toBe(2);expect(edited.hash).not.toBe(original.hash);expect((await verifyPipeline(edited.id,scope)).pass).toBe(true);await promotePipeline(edited.id,edited.hash,scope);
- expect((await runTask(task.id,{input:hold.outputTableId},scope,{currency:'€'})).status).toBe('succeeded');expect((await runTask(task.id,{input:hold.outputTableId},scope,{currency:2})).status).toBe('drift');await expect(parameterizePipeline(edited.id,[{step:0,path:['constructor'],name:'bad'}],scope)).rejects.toThrow();
+it("generalizes an existing scalar without modifying frozen examples or approved versions", async () => {
+  const { parameterizePipeline } = await import("../server/rote/workflow.js");
+  const task = await createTask("Currency parsing", "", {}, scope);
+  const training = await saveImport(
+      { columns: ["amount"], rows: [{ amount: "$12.50" }] },
+      "dollars",
+      scope,
+      { sha256: "dollars", sample: true },
+    ),
+    hold = await saveImport(
+      { columns: ["amount"], rows: [{ amount: "€25.00" }] },
+      "euros",
+      scope,
+      { sha256: "euros", sample: true },
+    );
+  const source = await runStep(
+    "parse_number",
+    training.outputTableId,
+    { column: "amount", currency: "$" },
+    scope,
+  );
+  const reference = await saveImport(
+    { columns: ["amount"], rows: [{ amount: 25 }] },
+    "euro reference",
+    scope,
+    { sha256: "euro-reference", sample: true },
+  );
+  await approveExample(
+    {
+      taskId: task.id,
+      inputs: { input: training.outputTableId },
+      outputTableId: source.outputTableId,
+      sourceOutputTableId: source.outputTableId,
+      holdout: false,
+      parameterValues: { currency: "$" },
+    },
+    scope,
+  );
+  await approveExample(
+    {
+      taskId: task.id,
+      inputs: { input: hold.outputTableId },
+      outputTableId: reference.outputTableId,
+      holdout: true,
+      parameterValues: { currency: "€" },
+    },
+    scope,
+  );
+  const original = await crystallizeTask(task.id, scope);
+  expect((await verifyPipeline(original.id, scope)).pass).toBe(false);
+  const edited = await parameterizePipeline(
+    original.id,
+    [{ step: 0, path: ["currency"], name: "currency" }],
+    scope,
+  );
+  expect(edited.version).toBe(2);
+  expect(edited.hash).not.toBe(original.hash);
+  expect((await verifyPipeline(edited.id, scope)).pass).toBe(true);
+  await promotePipeline(edited.id, edited.hash, scope);
+  expect(
+    (
+      await runTask(task.id, { input: hold.outputTableId }, scope, {
+        currency: "€",
+      })
+    ).status,
+  ).toBe("succeeded");
+  expect(
+    (
+      await runTask(task.id, { input: hold.outputTableId }, scope, {
+        currency: 2,
+      })
+    ).status,
+  ).toBe("drift");
+  await expect(
+    parameterizePipeline(
+      edited.id,
+      [{ step: 0, path: ["constructor"], name: "bad" }],
+      scope,
+    ),
+  ).rejects.toThrow();
 });
