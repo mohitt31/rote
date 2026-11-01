@@ -15,6 +15,7 @@ export default defineAction({
   agentTool: false,
   mcpTool: false,
   readOnly: true,
+  http: { method: "GET" },
   errors,
   run: ({ id }, ctx) =>
     guarded(async () => {

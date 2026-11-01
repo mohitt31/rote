@@ -23,7 +23,13 @@ export const runSchema = z.object({
 });
 export const taskDetailSchema = z.object({
   task: taskSchema,
-  examples: z.array(z.object({ id: z.string(), holdout: z.boolean() })),
+  examples: z.array(
+    z.object({
+      id: z.string(),
+      holdout: z.boolean(),
+      inputNames: z.array(z.string()),
+    }),
+  ),
   versions: z.array(
     z.object({
       id: z.string(),

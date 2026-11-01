@@ -558,7 +558,11 @@ export async function getTask(id: string, scope: Scope) {
   }
   return {
     task,
-    examples: examples.map((e) => ({ id: e.id, holdout: e.holdout })),
+    examples: examples.map((e) => ({
+      id: e.id,
+      holdout: e.holdout,
+      inputNames: Object.keys(e.inputBindings).sort(),
+    })),
     versions,
     runs,
   };
@@ -595,22 +599,20 @@ export async function parameterizePipeline(
       .orderBy(desc(s.pipelines.version))
       .limit(1);
     version = (last?.version ?? 0) + 1;
-    await tx
-      .insert(s.pipelines)
-      .values({
-        id: newId,
-        taskId: source.taskId,
-        version,
-        status: "candidate",
-        steps: plan,
-        paramsSchema: {
-          inputNames: plan.inputs,
-          parameters: plan.parameters,
-          hash: planHash(plan),
-        },
-        createdFromRunId: source.createdFromRunId,
-        ...scope,
-      });
+    await tx.insert(s.pipelines).values({
+      id: newId,
+      taskId: source.taskId,
+      version,
+      status: "candidate",
+      steps: plan,
+      paramsSchema: {
+        inputNames: plan.inputs,
+        parameters: plan.parameters,
+        hash: planHash(plan),
+      },
+      createdFromRunId: source.createdFromRunId,
+      ...scope,
+    });
   });
   return { id: newId, version, hash: planHash(plan) };
 }

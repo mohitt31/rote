@@ -1,69 +1,121 @@
 import { writeClientAppState } from "@agent-native/core/client/application-state";
 import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
-import { useEffect, useState } from "react";
+import {
+  IconCheck,
+  IconFlask,
+  IconLock,
+  IconPlayerPlay,
+  IconPlus,
+  IconShieldCheck,
+  IconSparkles,
+  IconTrash,
+} from "@tabler/icons-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { ParameterizePipeline } from "@/components/ParameterizePipeline";
+import { PipelineSteps } from "@/components/rote/PipelineSteps";
+import { TablePicker, TablePreview } from "@/components/rote/TableBits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { VerificationDiff } from "@/components/VerificationDiff";
+import { StatusPill, VerificationDiff } from "@/components/VerificationDiff";
+import { cn } from "@/lib/utils";
 
 import {
   bindingsSchema,
   parameterValuesSchema,
 } from "../../shared/rote/pipeline";
-type Draft = {
-  taskId: string;
-  training: {
-    inputs: Record<string, string>;
-    outputTableId: string | null;
-    sourceOutputTableId: string | null;
-  };
-  holdout: {
-    inputs: Record<string, string>;
-    outputTableId: string | null;
-    sourceOutputTableId: string | null;
-  };
-  next: {
-    inputs: Record<string, string>;
-    outputTableId: string | null;
-    sourceOutputTableId: string | null;
-  };
+
+type Binding = { name: string; tableId: string };
+type ExampleDraft = {
+  inputs: Record<string, string>;
+  outputTableId: string | null;
+  sourceOutputTableId: string | null;
 };
+type SampleDraft = {
+  taskId: string;
+  training: ExampleDraft;
+  holdout: ExampleDraft;
+  next: ExampleDraft;
+};
+type Form = {
+  inputs: Binding[];
+  output: string;
+  source: string;
+  params: string;
+};
+
+const emptyForm = (names: string[] = ["input"]): Form => ({
+  inputs: names.map((name) => ({ name, tableId: "" })),
+  output: "",
+  source: "",
+  params: "{}",
+});
+const fromDraft = (d: ExampleDraft): Form => ({
+  inputs: Object.entries(d.inputs).map(([name, tableId]) => ({
+    name,
+    tableId,
+  })),
+  output: d.outputTableId ?? "",
+  source: d.sourceOutputTableId ?? "",
+  params: "{}",
+});
+const toBindings = (inputs: Binding[]) =>
+  bindingsSchema.parse(
+    Object.fromEntries(inputs.map((b) => [b.name.trim(), b.tableId])),
+  );
+const ready = (inputs: Binding[]) =>
+  inputs.length > 0 && inputs.every((b) => b.name.trim() && b.tableId);
+
 export function meta() {
   return [{ title: "Rote · Tasks" }];
 }
+
 export default function Tasks() {
   const t = useT(),
     [search, setSearch] = useSearchParams(),
     id = search.get("task") ?? "";
   const list = useActionQuery("list-tasks", {}),
     detail = useActionQuery("get-task", { id }, { enabled: !!id });
-  const [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [name, setName] = useState(""),
-    [inputs, setInputs] = useState("{}"),
-    [parameterValues, setParameterValues] = useState("{}"),
-    [output, setOutput] = useState(""),
-    [source, setSource] = useState(""),
-    [holdout, setHoldout] = useState(false),
-    [draft, setDraft] = useState<Draft | null>(null);
+    [draft, setDraft] = useState<SampleDraft | null>(null),
+    [training, setTraining] = useState<Form>(emptyForm()),
+    [holdout, setHoldout] = useState<Form>(emptyForm()),
+    [next, setNext] = useState<Form>(emptyForm()),
+    [lastRun, setLastRun] = useState<{
+      status: string;
+      message: string;
+      durationMs: number;
+      outputTableId: string | null;
+    } | null>(null);
+
   useEffect(() => {
     void writeClientAppState("rote-task-selection", {
       taskId: id || null,
     }).catch(() => setError(t("rote.contextError")));
-    const stored = sessionStorage.getItem(`rote-demo:${id}`);
+    let stored: SampleDraft | null = null;
     try {
-      setDraft(stored ? JSON.parse(stored) : null);
+      const raw = sessionStorage.getItem(`rote-demo:${id}`);
+      stored = raw ? (JSON.parse(raw) as SampleDraft) : null;
     } catch {
-      setDraft(null);
+      stored = null;
     }
+    setDraft(stored);
+    setTraining(stored ? fromDraft(stored.training) : emptyForm());
+    setHoldout(stored ? fromDraft(stored.holdout) : emptyForm());
+    setNext(stored ? fromDraft(stored.next) : emptyForm());
+    setLastRun(null);
+    setError("");
+    setNotice("");
   }, [id, t]);
-  async function perform(fn: () => Promise<void>) {
-    setBusy(true);
+
+  async function perform(key: string, fn: () => Promise<void>) {
+    setBusy(key);
     setError("");
     setNotice("");
     try {
@@ -71,277 +123,354 @@ export default function Tasks() {
       await list.refetch();
       if (id) await detail.refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("rote.failed"));
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
-  function load(which: "training" | "holdout" | "next") {
-    if (!draft) return;
-    const e = draft[which];
-    setInputs(JSON.stringify(e.inputs, null, 2));
-    setOutput(e.outputTableId ?? "");
-    setSource(e.sourceOutputTableId ?? "");
-    setHoldout(which === "holdout");
-    setParameterValues("{}");
-  }
+
   const data = detail.data;
+  const view = useMemo(() => {
+    if (!data) return null;
+    const trainingEx = data.examples.find((e) => !e.holdout),
+      holdoutEx = data.examples.find((e) => e.holdout),
+      latest = data.versions[0],
+      active = data.versions.find((v) => v.id === data.task.currentPipelineId),
+      replays = data.runs.filter((r) => r.mode === "pipeline"),
+      teach = data.runs.find((r) => r.mode !== "pipeline");
+    const done = [
+      !!trainingEx && !!holdoutEx,
+      data.versions.length > 0,
+      !!latest && ["verified", "approved"].includes(latest.status),
+      !!latest && latest.status === "approved",
+      replays.some((r) => r.status === "succeeded"),
+    ];
+    const current = done.findIndex((d) => !d);
+    return {
+      trainingEx,
+      holdoutEx,
+      latest,
+      active,
+      replays,
+      teach,
+      done,
+      current: current === -1 ? 5 : current,
+    };
+  }, [data]);
+
+  // Holdout inputs must use the training example's binding names.
+  const trainingNames = view?.trainingEx?.inputNames.join("|");
+  useEffect(() => {
+    if (!trainingNames) return;
+    const names = trainingNames.split("|");
+    setHoldout((f) =>
+      f.inputs.map((b) => b.name).join("|") === trainingNames
+        ? f
+        : {
+            ...f,
+            inputs: names.map((n) => ({
+              name: n,
+              tableId: f.inputs.find((b) => b.name === n)?.tableId ?? "",
+            })),
+          },
+    );
+  }, [trainingNames]);
+
+  // Replay inputs follow the active pipeline's named inputs.
+  const activeNames = view?.active?.plan.inputs.join("|");
+  useEffect(() => {
+    if (!activeNames) return;
+    const names = activeNames.split("|");
+    setNext((f) =>
+      f.inputs.map((b) => b.name).join("|") === activeNames
+        ? f
+        : {
+            ...f,
+            inputs: names.map((n) => ({
+              name: n,
+              tableId: f.inputs.find((b) => b.name === n)?.tableId ?? "",
+            })),
+          },
+    );
+  }, [activeNames]);
+
+  const prepareSample = () =>
+    perform("sample", async () => {
+      const result = await callAction("prepare-payout-sample", {});
+      sessionStorage.setItem(
+        `rote-demo:${result.taskId}`,
+        JSON.stringify(result),
+      );
+      setSearch({ task: result.taskId });
+      setNotice(t("rote.samplePrepared"));
+    });
+
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
-      <header>
-        <h1 className="text-2xl font-semibold">{t("rote.tasksTitle")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t("rote.tasksSubtitle")}
-        </p>
-      </header>
-      <section className="flex flex-wrap items-end gap-3 rounded-xl border p-4">
-        <label className="grid gap-1 text-sm">
-          {t("rote.taskName")}
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <Button
-          disabled={busy || !name.trim()}
-          onClick={() =>
-            void perform(async () => {
-              const result = await callAction("create-task", {
-                name: name.trim(),
+    <main className="mx-auto grid max-w-7xl gap-6 p-4 md:grid-cols-[240px_minmax(0,1fr)] md:p-8">
+      <aside className="space-y-4">
+        <div className="space-y-2">
+          <h1 className="text-lg font-semibold">{t("rote.tasksTitle")}</h1>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              void perform("create", async () => {
+                const result = await callAction("create-task", {
+                  name: name.trim(),
+                });
+                setName("");
+                setSearch({ task: result.id });
               });
-              setSearch({ task: result.id });
-            })
-          }
-        >
-          {t("rote.createTask")}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={busy}
-          onClick={() =>
-            void perform(async () => {
-              const result = await callAction("prepare-payout-sample", {});
-              sessionStorage.setItem(
-                `rote-demo:${result.taskId}`,
-                JSON.stringify(result),
-              );
-              setDraft(result);
-              setSearch({ task: result.taskId });
-              setNotice(t("rote.samplePrepared"));
-            })
-          }
-        >
-          {t("rote.prepareSample")}
-        </Button>
-      </section>
-      {busy && <p role="status">{t("rote.working")}</p>}
-      {error && (
-        <p
-          role="alert"
-          className="break-words rounded-lg border border-destructive p-3 text-destructive"
-        >
-          {error}
-        </p>
-      )}
-      {notice && <p role="status">{notice}</p>}
-      <div className="grid gap-6 md:grid-cols-[210px_minmax(0,1fr)]">
-        <aside className="space-y-2">
-          {list.isLoading && <p>{t("rote.loading")}</p>}
-          {list.error && <p role="alert">{t("rote.loadError")}</p>}
+            }}
+          >
+            <Input
+              aria-label={t("rote.taskName")}
+              placeholder={t("rote.flow.newTaskPlaceholder")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              variant="outline"
+              aria-label={t("rote.createTask")}
+              disabled={!!busy || !name.trim()}
+            >
+              <IconPlus className="size-4" />
+            </Button>
+          </form>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 text-muted-foreground"
+            disabled={!!busy}
+            onClick={() => void prepareSample()}
+          >
+            <IconFlask className="size-4" />
+            {busy === "sample" ? t("rote.working") : t("rote.prepareSample")}
+          </Button>
+        </div>
+        <nav className="space-y-1" aria-label={t("rote.tasksTitle")}>
+          {list.isLoading && (
+            <div className="h-12 animate-pulse rounded-lg bg-muted" />
+          )}
+          {list.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {t("rote.loadError")}
+            </p>
+          )}
           {list.data?.map((task) => (
             <button
               key={task.id}
-              disabled={busy}
+              type="button"
               onClick={() => setSearch({ task: task.id })}
               aria-current={task.id === id ? "page" : undefined}
-              className={`w-full rounded-lg border p-3 text-left text-sm ${task.id === id ? "bg-muted" : ""}`}
+              className={cn(
+                "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                task.id === id && "bg-muted",
+              )}
             >
-              {task.name}
-              <span className="block text-xs text-muted-foreground">
+              <span className="line-clamp-2">{task.name}</span>
+              <span
+                className={cn(
+                  "mt-1 inline-block text-xs",
+                  task.currentPipelineId
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-muted-foreground",
+                )}
+              >
                 {task.currentPipelineId
-                  ? t("rote.activePipeline")
-                  : t("rote.needsApproval")}
+                  ? t("rote.flow.chipActive")
+                  : t("rote.flow.chipSetup")}
               </span>
             </button>
           ))}
-        </aside>
-        <section className="min-w-0 space-y-5">
-          {detail.error && <p role="alert">{t("rote.loadError")}</p>}
-          {!id && <p>{t("rote.chooseTask")}</p>}
-          {data && (
-            <>
-              <h2 className="text-lg font-medium">{data.task.name}</h2>
-              <p className="text-sm text-muted-foreground">
-                {data.task.description}
-              </p>
-              {draft && (
-                <div className="flex flex-wrap gap-2 rounded-lg border p-3">
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => load("training")}
-                  >
-                    {t("rote.loadTraining")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => load("holdout")}
-                  >
-                    {t("rote.loadHoldout")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => load("next")}
-                  >
-                    {t("rote.loadNext")}
-                  </Button>
-                </div>
-              )}
-              <div className="space-y-3 rounded-xl border p-4">
-                <h3 className="font-medium">{t("rote.exampleHeading")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t("rote.exampleHelp")}
-                </p>
-                <label className="grid gap-1 text-sm">
-                  {t("rote.inputBindings")}
-                  <Textarea
-                    className="min-h-28 font-mono text-xs"
-                    value={inputs}
-                    onChange={(e) => setInputs(e.target.value)}
+        </nav>
+      </aside>
+
+      <section className="min-w-0 space-y-5">
+        {(error || notice) && (
+          <p
+            role={error ? "alert" : "status"}
+            className={cn(
+              "break-words rounded-lg border px-3 py-2 text-sm",
+              error ? "border-destructive/50 text-destructive" : "bg-muted/40",
+            )}
+          >
+            {error || notice}
+          </p>
+        )}
+        {!id && (
+          <EmptyState onSample={() => void prepareSample()} busy={!!busy} />
+        )}
+        {id && detail.isLoading && (
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+        )}
+        {detail.error && (
+          <p role="alert" className="text-sm text-destructive">
+            {t("rote.loadError")}
+          </p>
+        )}
+        {data && view && (
+          <>
+            <header className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold">{data.task.name}</h2>
+                {view.active && (
+                  <StatusPill
+                    ok
+                    label={`${t("rote.flow.chipActive")} · v${view.active.version}`}
                   />
-                </label>
-                <details>
-                  <summary className="cursor-pointer text-sm">
-                    {t("rote.parameterValues")}
-                  </summary>
-                  <label className="mt-2 grid gap-1 text-sm">
-                    {t("rote.parameterValuesHelp")}
-                    <Textarea
-                      className="font-mono text-xs"
-                      value={parameterValues}
-                      onChange={(e) => setParameterValues(e.target.value)}
-                    />
-                  </label>
-                </details>
-                <label className="grid gap-1 text-sm">
-                  {t("rote.referenceOutput")}
-                  <Input
-                    value={output}
-                    onChange={(e) => setOutput(e.target.value)}
-                  />
-                </label>
-                {output && (
-                  <Link
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block text-sm underline"
-                    to={`/workbench?table=${encodeURIComponent(output)}`}
-                  >
-                    {t("rote.reviewOutput")}
-                  </Link>
                 )}
-                <label className="grid gap-1 text-sm">
-                  {t("rote.sourceOutput")}
-                  <Input
-                    value={source}
-                    onChange={(e) => setSource(e.target.value)}
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={holdout}
-                    onChange={(e) => setHoldout(e.target.checked)}
-                  />
-                  {t("rote.holdout")}
-                </label>
-                <Button
-                  disabled={busy || !!data.versions.length || !output}
-                  onClick={() =>
-                    void perform(async () => {
+              </div>
+              {data.task.description && (
+                <p className="text-sm text-muted-foreground">
+                  {data.task.description}
+                </p>
+              )}
+            </header>
+
+            <Stepper done={view.done} current={view.current} />
+
+            <Step
+              n={1}
+              state={stateOf(0, view)}
+              title={t("rote.flow.s1")}
+              hint={t("rote.flow.s1Hint")}
+            >
+              <div className="grid gap-4">
+                <ExampleCard
+                  title={t("rote.flow.trainingExample")}
+                  approved={view.trainingEx?.inputNames}
+                  frozen={data.versions.length > 0}
+                  form={training}
+                  setForm={setTraining}
+                  withSource
+                  editableNames={!view.trainingEx}
+                  busy={busy === "training"}
+                  disabled={!!busy}
+                  onApprove={() =>
+                    perform("training", async () => {
                       await callAction("approve-example", {
                         taskId: id,
-                        inputs: bindingsSchema.parse(JSON.parse(inputs)),
+                        inputs: toBindings(training.inputs),
                         parameterValues: parameterValuesSchema.parse(
-                          JSON.parse(parameterValues),
+                          JSON.parse(training.params),
                         ),
-                        outputTableId: output,
-                        ...(source ? { sourceOutputTableId: source } : {}),
-                        holdout,
+                        outputTableId: training.output,
+                        ...(training.source
+                          ? { sourceOutputTableId: training.source }
+                          : {}),
+                        holdout: false,
                       });
                       setNotice(t("rote.exampleApproved"));
                     })
                   }
-                >
-                  {t("rote.approveExample")}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  {data.examples.filter((e) => !e.holdout).length} training ·{" "}
-                  {data.examples.filter((e) => e.holdout).length} holdout
-                </p>
+                />
+                <ExampleCard
+                  title={t("rote.flow.holdoutExample")}
+                  subtitle={t("rote.flow.holdoutHint")}
+                  approved={view.holdoutEx?.inputNames}
+                  frozen={data.versions.length > 0}
+                  form={holdout}
+                  setForm={setHoldout}
+                  editableNames={false}
+                  locked={!view.trainingEx}
+                  busy={busy === "holdout"}
+                  disabled={!!busy}
+                  onApprove={() =>
+                    perform("holdout", async () => {
+                      await callAction("approve-example", {
+                        taskId: id,
+                        inputs: toBindings(holdout.inputs),
+                        parameterValues: parameterValuesSchema.parse(
+                          JSON.parse(holdout.params),
+                        ),
+                        outputTableId: holdout.output,
+                        holdout: true,
+                      });
+                      setNotice(t("rote.exampleApproved"));
+                    })
+                  }
+                />
               </div>
-              <Button
-                disabled={
-                  busy ||
-                  !data.examples.some((e) => e.holdout) ||
-                  !data.examples.some((e) => !e.holdout)
-                }
-                onClick={() =>
-                  void perform(async () => {
-                    await callAction("crystallize-task", { taskId: id });
-                    setNotice(t("rote.crystallized"));
-                  })
-                }
-              >
-                {t("rote.crystallize")}
-              </Button>
-              {data.versions.map((v) => (
-                <article key={v.id} className="space-y-3 rounded-xl border p-4">
-                  <h3 className="font-medium">
-                    v{v.version} · {v.status}
-                  </h3>
-                  <p className="break-all font-mono text-xs">
-                    SHA-256 {v.hash}
+            </Step>
+
+            <Step
+              n={2}
+              state={stateOf(1, view)}
+              title={t("rote.flow.s2")}
+              hint={t("rote.flow.s2Hint")}
+            >
+              {view.latest ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    v{view.latest.version} · {view.latest.plan.steps.length}{" "}
+                    {t("rote.flow.steps")} · {t("rote.flow.inputs")}:{" "}
+                    {view.latest.plan.inputs.join(", ")} ·{" "}
+                    <span className="font-mono">
+                      {view.latest.hash.slice(0, 12)}
+                    </span>
                   </p>
-                  <ol className="list-inside list-decimal text-sm">
-                    {v.plan.steps.map((step, i) => (
-                      <li key={i}>
-                        {step.action} ← {step.input}
-                        {step.right ? ` + ${step.right}` : ""}
-                      </li>
-                    ))}
-                  </ol>
-                  <details>
-                    <summary className="cursor-pointer text-sm">
-                      {t("rote.pipelineDetails")}
+                  <details open={view.current <= 2} className="group space-y-2">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">
+                      {t("rote.flow.showSteps")}
                     </summary>
-                    <pre className="max-h-64 overflow-auto text-xs">
-                      {JSON.stringify(v.plan, null, 2)}
-                    </pre>
+                    <div className="mt-2">
+                      <PipelineSteps plan={view.latest.plan} />
+                    </div>
                   </details>
-                  {v.verification && (
-                    <pre className="max-h-52 overflow-auto rounded bg-muted p-3 text-xs">
-                      {JSON.stringify(v.verification, null, 2)}
-                    </pre>
-                  )}
-                  <ParameterizePipeline
-                    id={v.id}
-                    onDone={() => {
-                      void detail.refetch();
-                    }}
-                  />
-                  {v.verification && (
-                    <VerificationDiff id={v.verification.id} />
-                  )}
-                  <div className="flex flex-wrap gap-2">
+                  <details className="rounded-lg border px-3 py-2">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">
+                      {t("rote.flow.advanced")}
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <ParameterizePipeline
+                        id={view.latest.id}
+                        onDone={() => void detail.refetch()}
+                      />
+                      <pre className="max-h-64 overflow-auto rounded bg-muted p-3 text-xs">
+                        {JSON.stringify(view.latest.plan, null, 2)}
+                      </pre>
+                    </div>
+                  </details>
+                </div>
+              ) : (
+                <Button
+                  className="gap-2"
+                  disabled={!!busy || !view.done[0]}
+                  onClick={() =>
+                    void perform("crystallize", async () => {
+                      await callAction("crystallize-task", { taskId: id });
+                      setNotice(t("rote.crystallized"));
+                    })
+                  }
+                >
+                  <IconSparkles className="size-4" />
+                  {busy === "crystallize"
+                    ? t("rote.working")
+                    : t("rote.crystallize")}
+                </Button>
+              )}
+            </Step>
+
+            <Step
+              n={3}
+              state={stateOf(2, view)}
+              title={t("rote.flow.s3")}
+              hint={t("rote.flow.s3Hint")}
+            >
+              {view.latest && (
+                <div className="space-y-4">
+                  {["candidate", "verified"].includes(view.latest.status) && (
                     <Button
-                      variant="outline"
-                      disabled={
-                        busy || !["candidate", "verified"].includes(v.status)
-                      }
+                      variant={view.latest.verification ? "outline" : "default"}
+                      className="gap-2"
+                      disabled={!!busy}
                       onClick={() =>
-                        void perform(async () => {
+                        void perform("verify", async () => {
                           const r = await callAction("verify-pipeline", {
-                            id: v.id,
+                            id: view.latest!.id,
                           });
                           setNotice(
                             r.pass
@@ -351,71 +480,587 @@ export default function Tasks() {
                         })
                       }
                     >
-                      {t("rote.verify")}
+                      <IconShieldCheck className="size-4" />
+                      {busy === "verify"
+                        ? t("rote.working")
+                        : view.latest.verification
+                          ? t("rote.flow.reverify")
+                          : t("rote.verify")}
                     </Button>
+                  )}
+                  {view.latest.verification && (
+                    <VerificationDiff
+                      key={view.latest.verification.id}
+                      id={view.latest.verification.id}
+                      check={view.latest.verification.check}
+                    />
+                  )}
+                </div>
+              )}
+            </Step>
+
+            <Step
+              n={4}
+              state={stateOf(3, view)}
+              title={t("rote.flow.s4")}
+              hint={t("rote.flow.s4Hint")}
+            >
+              {view.latest && (
+                <div className="flex flex-wrap items-center gap-3">
+                  {view.latest.status === "approved" ? (
+                    <StatusPill
+                      ok
+                      label={`v${view.latest.version} ${t("rote.flow.isActive")}`}
+                    />
+                  ) : (
                     <Button
-                      disabled={busy || v.status !== "verified"}
+                      className="gap-2"
+                      disabled={!!busy || view.latest.status !== "verified"}
                       onClick={() =>
-                        void perform(async () => {
+                        void perform("promote", async () => {
                           await callAction("promote-pipeline", {
-                            id: v.id,
-                            hash: v.hash,
+                            id: view.latest!.id,
+                            hash: view.latest!.hash,
                           });
                           setNotice(t("rote.promoted"));
                         })
                       }
                     >
-                      {t("rote.approvePromotion")} v{v.version}
+                      <IconCheck className="size-4" />
+                      {t("rote.approvePromotion")} v{view.latest.version}
                     </Button>
+                  )}
+                  <span className="break-all font-mono text-xs text-muted-foreground">
+                    sha256 {view.latest.hash}
+                  </span>
+                </div>
+              )}
+            </Step>
+
+            <Step
+              n={5}
+              state={
+                view.active ? (view.done[4] ? "done" : "current") : "locked"
+              }
+              title={t("rote.flow.s5")}
+              hint={t("rote.flow.s5Hint")}
+            >
+              {view.active && (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {next.inputs.map((b, i) => (
+                      <TablePicker
+                        key={b.name}
+                        label={b.name}
+                        value={b.tableId}
+                        disabled={!!busy}
+                        onChange={(tableId) =>
+                          setNext((f) => ({
+                            ...f,
+                            inputs: f.inputs.map((x, j) =>
+                              j === i ? { ...x, tableId } : x,
+                            ),
+                          }))
+                        }
+                      />
+                    ))}
                   </div>
-                </article>
-              ))}
-              <div className="space-y-3 rounded-xl border p-4">
-                <h3 className="font-medium">{t("rote.replay")}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t("rote.replayHelp")}
-                </p>
+                  <ParamsField
+                    value={next.params}
+                    onChange={(params) => setNext((f) => ({ ...f, params }))}
+                  />
+                  <Button
+                    className="gap-2"
+                    disabled={!!busy || !ready(next.inputs)}
+                    onClick={() =>
+                      void perform("run", async () => {
+                        const r = await callAction("run-task", {
+                          taskId: id,
+                          inputs: toBindings(next.inputs),
+                          parameterValues: parameterValuesSchema.parse(
+                            JSON.parse(next.params),
+                          ),
+                        });
+                        setLastRun(r);
+                      })
+                    }
+                  >
+                    <IconPlayerPlay className="size-4" />
+                    {busy === "run" ? t("rote.working") : t("rote.runTask")}
+                  </Button>
+                  {lastRun && (
+                    <div
+                      className={cn(
+                        "space-y-3 rounded-lg border p-3",
+                        lastRun.status === "succeeded"
+                          ? "border-emerald-600/40"
+                          : "border-amber-600/50",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusPill
+                          ok={lastRun.status === "succeeded"}
+                          label={
+                            lastRun.status === "succeeded"
+                              ? t("rote.flow.replayed")
+                              : t("rote.flow.drift")
+                          }
+                        />
+                        <span className="text-sm tabular-nums">
+                          0 {t("rote.flow.modelTokens")} ·{" "}
+                          {lastRun.durationMs.toFixed(1)} ms
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {lastRun.status === "succeeded"
+                          ? lastRun.message
+                          : `${lastRun.message}. ${t("rote.flow.driftHelp")}`}
+                      </p>
+                      {lastRun.outputTableId && (
+                        <TablePreview id={lastRun.outputTableId} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Step>
+
+            {view.active && (
+              <Metrics teach={view.teach} replays={view.replays} />
+            )}
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
+
+type View = { done: boolean[]; current: number };
+const stateOf = (i: number, v: View) =>
+  v.done[i] ? "done" : v.current === i ? "current" : "locked";
+
+function Stepper({ done, current }: { done: boolean[]; current: number }) {
+  const t = useT();
+  const labels = [
+    t("rote.flow.s1Short"),
+    t("rote.flow.s2Short"),
+    t("rote.flow.s3Short"),
+    t("rote.flow.s4Short"),
+    t("rote.flow.s5Short"),
+  ];
+  return (
+    <ol className="grid grid-cols-5 gap-1" aria-label={t("rote.flow.progress")}>
+      {labels.map((label, i) => (
+        <li
+          key={label}
+          aria-current={i === current ? "step" : undefined}
+          className="min-w-0 space-y-1.5"
+        >
+          <div
+            className={cn(
+              "h-1 rounded-full",
+              done[i]
+                ? "bg-emerald-600"
+                : i === current
+                  ? "bg-foreground"
+                  : "bg-muted",
+            )}
+          />
+          <p
+            className={cn(
+              "truncate text-xs",
+              i === current ? "font-medium" : "text-muted-foreground",
+            )}
+          >
+            {i + 1}. {label}
+          </p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Step({
+  n,
+  state,
+  title,
+  hint,
+  children,
+}: {
+  n: number;
+  state: "done" | "current" | "locked";
+  title: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby={`step-${n}`}
+      className={cn(
+        "rounded-xl border p-4 md:p-5",
+        state === "current" && "border-foreground/30 shadow-sm",
+        state === "locked" && "opacity-60",
+      )}
+    >
+      <div className="mb-3 flex items-start gap-3">
+        <span
+          className={cn(
+            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+            state === "done"
+              ? "bg-emerald-600 text-white"
+              : state === "current"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground",
+          )}
+        >
+          {state === "done" ? (
+            <IconCheck className="size-3.5" strokeWidth={2.5} />
+          ) : state === "locked" ? (
+            <IconLock className="size-3" />
+          ) : (
+            n
+          )}
+        </span>
+        <div className="min-w-0">
+          <h3 id={`step-${n}`} className="font-medium">
+            {title}
+          </h3>
+          <p className="text-sm text-muted-foreground">{hint}</p>
+        </div>
+      </div>
+      {state !== "locked" && <div className="md:pl-9">{children}</div>}
+    </section>
+  );
+}
+
+function ParamsField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const t = useT();
+  return (
+    <details>
+      <summary className="cursor-pointer text-xs text-muted-foreground">
+        {t("rote.parameterValues")}
+      </summary>
+      <label className="mt-2 grid gap-1 text-xs text-muted-foreground">
+        {t("rote.parameterValuesHelp")}
+        <Textarea
+          className="min-h-16 font-mono text-xs"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </label>
+    </details>
+  );
+}
+
+function ExampleCard({
+  title,
+  subtitle,
+  approved,
+  frozen,
+  form,
+  setForm,
+  withSource,
+  editableNames,
+  locked,
+  busy,
+  disabled,
+  onApprove,
+}: {
+  title: string;
+  subtitle?: string;
+  approved?: string[] | undefined;
+  frozen: boolean;
+  form: Form;
+  setForm: (f: Form | ((f: Form) => Form)) => void;
+  withSource?: boolean;
+  editableNames: boolean;
+  locked?: boolean;
+  busy: boolean;
+  disabled: boolean;
+  onApprove: () => void;
+}) {
+  const t = useT();
+  if (approved)
+    return (
+      <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">{title}</p>
+          <StatusPill
+            ok
+            label={frozen ? t("rote.flow.frozen") : t("rote.flow.approved")}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t("rote.flow.inputs")}: {approved.join(", ")}
+        </p>
+      </div>
+    );
+  const update = (i: number, patch: Partial<Binding>) =>
+    setForm((f) => ({
+      ...f,
+      inputs: f.inputs.map((b, j) => (j === i ? { ...b, ...patch } : b)),
+    }));
+  return (
+    <div className="min-w-0 space-y-3 rounded-lg border p-4">
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        )}
+      </div>
+      {locked ? (
+        <p className="text-sm text-muted-foreground">
+          {t("rote.flow.trainingFirst")}
+        </p>
+      ) : (
+        <>
+          {form.inputs.map((b, i) => (
+            <div key={i} className="flex items-end gap-2">
+              {editableNames && (
+                <label className="grid w-28 shrink-0 gap-1 text-sm">
+                  <span className="text-muted-foreground">
+                    {t("rote.flow.inputName")}
+                  </span>
+                  <Input
+                    value={b.name}
+                    onChange={(e) => update(i, { name: e.target.value })}
+                  />
+                </label>
+              )}
+              <div className="min-w-0 flex-1">
+                <TablePicker
+                  label={editableNames ? t("rote.flow.table") : b.name}
+                  value={b.tableId}
+                  onChange={(tableId) => update(i, { tableId })}
+                  disabled={disabled}
+                />
+              </div>
+              {editableNames && form.inputs.length > 1 && (
                 <Button
-                  disabled={busy || !data.task.currentPipelineId}
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("rote.flow.removeInput")}
                   onClick={() =>
-                    void perform(async () => {
-                      const r = await callAction("run-task", {
-                        taskId: id,
-                        inputs: bindingsSchema.parse(JSON.parse(inputs)),
-                        parameterValues: parameterValuesSchema.parse(
-                          JSON.parse(parameterValues),
-                        ),
-                      });
-                      setNotice(`${r.message} · ${r.durationMs.toFixed(1)} ms`);
-                    })
+                    setForm((f) => ({
+                      ...f,
+                      inputs: f.inputs.filter((_, j) => j !== i),
+                    }))
                   }
                 >
-                  {t("rote.runTask")}
+                  <IconTrash className="size-4" />
                 </Button>
-                {data.runs.map((run) => (
-                  <div key={run.id} className="rounded border p-3 text-sm">
-                    {run.mode} · {run.status} ·{" "}
-                    {run.tokensIn === null
-                      ? "tokens not measured"
-                      : `${run.tokensIn + (run.tokensOut ?? 0)} tokens`}
-                    {run.durationMs !== null
-                      ? ` · ${run.durationMs.toFixed(1)} ms`
-                      : ""}
-                    {run.outputTableId && (
+              )}
+            </div>
+          ))}
+          {editableNames && form.inputs.length < 10 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-muted-foreground"
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  inputs: [
+                    ...f.inputs,
+                    { name: `input_${f.inputs.length + 1}`, tableId: "" },
+                  ],
+                }))
+              }
+            >
+              <IconPlus className="size-3.5" />
+              {t("rote.flow.addInput")}
+            </Button>
+          )}
+          <TablePicker
+            label={t("rote.flow.reference")}
+            value={form.output}
+            onChange={(output) => setForm((f) => ({ ...f, output }))}
+            disabled={disabled}
+          />
+          {form.output && <TablePreview id={form.output} rows={5} />}
+          {withSource && (
+            <TablePicker
+              label={t("rote.flow.source")}
+              value={form.source}
+              onChange={(source) => setForm((f) => ({ ...f, source }))}
+              disabled={disabled}
+            />
+          )}
+          <ParamsField
+            value={form.params}
+            onChange={(params) => setForm((f) => ({ ...f, params }))}
+          />
+          <Button
+            className="w-full gap-2 sm:w-auto"
+            disabled={disabled || frozen || !form.output || !ready(form.inputs)}
+            onClick={onApprove}
+          >
+            <IconCheck className="size-4" />
+            {busy ? t("rote.working") : t("rote.approveExample")}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+type Run = {
+  id: string;
+  mode: string;
+  status: string;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  cost: number | null;
+  durationMs: number | null;
+  outputTableId: string | null;
+};
+
+function Metrics({
+  teach,
+  replays,
+}: {
+  teach?: Run | undefined;
+  replays: Run[];
+}) {
+  const t = useT();
+  const ok = replays.filter((r) => r.status === "succeeded");
+  const ms = ok
+    .map((r) => r.durationMs)
+    .filter((x): x is number => x !== null)
+    .sort((a, b) => a - b);
+  const median = ms.length ? ms[Math.floor((ms.length - 1) / 2)]! : null;
+  const measured = teach && teach.mode === "agent" && teach.tokensIn !== null;
+  const teachMs = measured ? teach.durationMs : null;
+  return (
+    <section className="space-y-4 rounded-xl border p-4 md:p-5">
+      <h3 className="font-medium">{t("rote.flow.metrics")}</h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg bg-muted/40 p-3">
+          <p className="text-xs text-muted-foreground">
+            {t("rote.flow.teachRun")}
+          </p>
+          {measured ? (
+            <p className="mt-1 text-lg font-semibold tabular-nums">
+              {(teach.tokensIn! + (teach.tokensOut ?? 0)).toLocaleString()}{" "}
+              <span className="text-sm font-normal">tokens</span>
+              {teachMs !== null && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}
+                  · {(teachMs / 1000).toFixed(1)} s
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("rote.flow.notMeasured")}
+            </p>
+          )}
+        </div>
+        <div className="rounded-lg bg-emerald-500/10 p-3">
+          <p className="text-xs text-muted-foreground">
+            {t("rote.flow.replayRun")}
+          </p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">
+            0 <span className="text-sm font-normal">tokens</span>
+            {median !== null && (
+              <span className="text-sm font-normal text-muted-foreground">
+                {" "}
+                · {median.toFixed(1)} ms {t("rote.flow.median")} ({ms.length})
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+      {replays.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="py-1 pr-3 font-normal">
+                  {t("rote.flow.status")}
+                </th>
+                <th className="py-1 pr-3 font-normal">tokens</th>
+                <th className="py-1 pr-3 font-normal">ms</th>
+                <th className="py-1 font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {replays.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-1.5 pr-3">
+                    {r.status === "succeeded"
+                      ? t("rote.flow.replayed")
+                      : t("rote.flow.drift")}
+                  </td>
+                  <td className="py-1.5 pr-3 tabular-nums">
+                    {r.tokensIn === null
+                      ? "—"
+                      : r.tokensIn + (r.tokensOut ?? 0)}
+                  </td>
+                  <td className="py-1.5 pr-3 tabular-nums">
+                    {r.durationMs?.toFixed(1) ?? "—"}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {r.outputTableId && (
                       <Link
-                        className="ml-3 underline"
-                        to={`/workbench?table=${run.outputTableId}`}
+                        className="text-xs underline"
+                        to={`/workbench?table=${encodeURIComponent(r.outputTableId)}`}
                       >
                         {t("rote.reviewOutput")}
                       </Link>
                     )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EmptyState({
+  onSample,
+  busy,
+}: {
+  onSample: () => void;
+  busy: boolean;
+}) {
+  const t = useT();
+  const steps = [
+    t("rote.flow.s1"),
+    t("rote.flow.s2"),
+    t("rote.flow.s3"),
+    t("rote.flow.s4"),
+    t("rote.flow.s5"),
+  ];
+  return (
+    <div className="space-y-5 rounded-xl border p-6 md:p-8">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">{t("rote.flow.emptyTitle")}</h2>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          {t("rote.flow.emptyBody")}
+        </p>
       </div>
-    </main>
+      <ol className="grid gap-2 sm:grid-cols-5">
+        {steps.map((s, i) => (
+          <li key={s} className="rounded-lg bg-muted/40 p-3 text-sm">
+            <span className="block text-xs text-muted-foreground">{i + 1}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <Button className="gap-2" disabled={busy} onClick={onSample}>
+        <IconFlask className="size-4" />
+        {t("rote.prepareSample")}
+      </Button>
+    </div>
   );
 }
