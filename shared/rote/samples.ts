@@ -168,9 +168,11 @@ const UNITS: [string, string][] = [
   ["box", "box"],
   ["CS", "case"],
 ];
-export function vendorCleanupSample(week: number) {
+export function vendorCleanupSample(week: number, size = 30) {
   if (!Number.isInteger(week) || week < 1 || week > 20)
     throw Error("Sample week must be 1–20");
+  if (!Number.isInteger(size) || size < 1 || size > 50000)
+    throw Error("Sample size must be 1–50000 rows");
   let seed = 7300 + week;
   const random = () =>
     (seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296;
@@ -183,7 +185,7 @@ export function vendorCleanupSample(week: number) {
     price: number;
     unit: string;
   }[] = [];
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < size; i++) {
     const sku = `SKU-${String(100 + i)}`;
     const vendor = VENDORS[i % VENDORS.length]!;
     const cents = 500 + Math.floor(random() * 250000);

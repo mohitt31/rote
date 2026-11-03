@@ -61,11 +61,24 @@ type Spec = {
   files: (week: number) => Record<string, string>;
   expected: (week: number) => Table;
   drift: [string, Mutate][];
+  scale?: {
+    rows: number;
+    files: () => Record<string, string>;
+    expected: () => Table;
+  };
 };
 
-async function importWeek(spec: Spec, week: number, mutate?: Mutate) {
+const SCALE_ROWS = 10_000,
+  SCALE_RUNS = 5;
+
+async function importWeek(
+  spec: Spec,
+  week: number,
+  mutate?: Mutate,
+  files: Record<string, string> = spec.files(week),
+) {
   const inputs: Record<string, string> = {};
-  for (const [name, csv] of Object.entries(spec.files(week))) {
+  for (const [name, csv] of Object.entries(files)) {
     const parsed = await parseFile(Buffer.from(csv), `${name}.csv`);
     const table = mutate ? mutate(name, parsed) : parsed;
     const saved = await saveImport(table, `bench-${name}-${week}`, scope, {
@@ -135,6 +148,11 @@ const specs: Spec[] = [
     prepare: prepareVendorSample,
     files: (w) => ({ prices: vendorCleanupSample(w).csv }),
     expected: (w) => vendorCleanupSample(w).expected,
+    scale: {
+      rows: SCALE_ROWS,
+      files: () => ({ prices: vendorCleanupSample(3, SCALE_ROWS).csv }),
+      expected: () => vendorCleanupSample(3, SCALE_ROWS).expected,
+    },
     drift: [
       [
         "new unit code (dozen)",
@@ -227,8 +245,40 @@ async function measure(spec: Spec) {
       message: out.message,
     });
   }
+  let scale = null;
+  if (spec.scale) {
+    const importStart = performance.now();
+    const inputs = await importWeek(spec, 0, undefined, spec.scale.files());
+    const importMs = performance.now() - importStart;
+    const expected = spec.scale.expected();
+    const runs = [];
+    for (let i = 0; i < SCALE_RUNS; i++) {
+      const out = await runTask(fixture.taskId, inputs, scope);
+      runs.push({
+        durationMs: out.durationMs,
+        status: out.status,
+        matchesReference:
+          out.status === "succeeded" &&
+          compareTables(expected, await readTable(out.outputTableId!, scope))
+            .pass,
+      });
+    }
+    const sorted = runs.map((r) => r.durationMs).sort((a, b) => a - b);
+    scale = {
+      description: `One generated input with ${spec.scale.rows} source rows (plus exact duplicates), imported once, then ${SCALE_RUNS} persisted run-task replays`,
+      sourceRows: spec.scale.rows,
+      importMs,
+      runs: runs.length,
+      matchesIndependentReference: runs.filter((r) => r.matchesReference)
+        .length,
+      medianMs: pct(sorted, 50),
+      maxMs: sorted[sorted.length - 1]!,
+      modelTokens: 0,
+    };
+  }
   const ms = weeks.map((w) => w.durationMs).sort((a, b) => a - b);
   return {
+    scale,
     key: spec.key,
     label: spec.label,
     teach: {
@@ -293,6 +343,13 @@ it("teaches once, then replays unseen weeks and stops on drift", async () => {
         `| ${r.label} | ${r.teach.durationMs.toFixed(0)} ms | ${r.replay.matchesIndependentReference}/${r.replay.weeks} | ${r.replay.medianMs.toFixed(1)} / ${r.replay.p95Ms.toFixed(1)} ms | 0 | ${r.drift.stoppedWithoutOutput}/${r.drift.cases} |`,
     ),
     "",
+    ...tasks
+      .filter((r) => r.scale)
+      .map(
+        (r) =>
+          `Scale, ${r.label}: ${r.scale!.sourceRows.toLocaleString("en-US")} source rows, ${r.scale!.matchesIndependentReference}/${r.scale!.runs} replays correct, median ${r.scale!.medianMs.toFixed(0)} ms (max ${r.scale!.maxMs.toFixed(0)} ms) per persisted run-task, 0 model tokens. One-time CSV import: ${r.scale!.importMs.toFixed(0)} ms.`,
+      ),
+    "",
     "Agent-only runs (tokens, cost, time): not measured yet; they require a real traced model run.",
     "",
     ...tasks.map(
@@ -315,6 +372,8 @@ it("teaches once, then replays unseen weeks and stops on drift", async () => {
   await writeFile("benchmark/results.md", md);
   console.log(md);
   for (const r of tasks) {
+    if (r.scale)
+      expect(r.scale.matchesIndependentReference).toBe(r.scale.runs);
     expect(r.replay.matchesIndependentReference).toBe(r.replay.weeks);
     expect(r.drift.stoppedWithoutOutput).toBe(r.drift.cases);
   }
