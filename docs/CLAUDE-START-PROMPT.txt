@@ -1,0 +1,9 @@
+Continue my Rote project from the complete Codex handoff. Talk to me in concise Hinglish.
+
+Private repo: https://github.com/mohitt31/rote
+Unified branch: codex/claude-handoff-2026-11-04
+Read docs/CLAUDE-HANDOFF.md first, then AGENTS.md and docs/brief.md. This branch combines all laptop work plus your existing PR #1 through 7a30364. Do not restart from old main or lose either side's changes.
+
+Local path: /Users/mohit/rote. The replacement Gemini key is already in the ignored local .env; I confirmed Free Tier/billing-disabled and the real hello-tool gate passed. Never print or ask me to paste a key into chat. Cloud sessions do not have my local key/database.
+
+Combined code passes 89 tests, typecheck, doctor and the two-task replay benchmark. Real reconciliation -> my human approvals -> crystallize -> verify -> promote -> next-week replay is still pending. Inspect the saved guided run and exact scoped IDs in the handoff; never call fixture preparation an agent run. First complete everything you can safely, then guide me step by step through exact approvals. Preserve free-only operation. No public release, deployment, paid services or upstream PRs without asking. Do not force-push or overwrite local data.

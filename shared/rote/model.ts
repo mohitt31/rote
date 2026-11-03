@@ -50,12 +50,12 @@ export const stepSchemas = {
     .object({
       column,
       decimal: z.enum([".", ","]).default("."),
-      // Gemini rejects empty enum members; retain the same runtime allowlist.
+      // Gemini rejects empty strings in tool enums, so "no separator" is
+      // "none"; legacy recorded params with "" still parse.
       thousands: z
-        .string()
-        .refine(
-          (v) => [",", ".", " ", ""].includes(v),
-          "Thousands separator must be comma, dot, space or empty",
+        .preprocess(
+          (v) => (v === "" ? "none" : v),
+          z.enum([",", ".", " ", "none"]),
         )
         .default(","),
       currency: z.string().max(10).default(""),

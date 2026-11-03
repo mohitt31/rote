@@ -14,6 +14,7 @@ export default defineAction({
   schema: z.object({ id: z.string().uuid() }),
   outputSchema: taskDetailSchema,
   errors,
+  mcpTool: true,
   http: { method: "GET" },
   run: (a, ctx) => guarded(() => getTask(a.id, scopeFor(ctx))),
 });

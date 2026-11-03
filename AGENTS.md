@@ -57,12 +57,14 @@ Read `.agents/skills/rote-pipelines/SKILL.md` when working on recorded pipelines
 | Action | Purpose |
 | --- | --- |
 | `create-task` | Establish task name and immutable numeric tolerances |
-| `prepare-payout-sample` | Prepare three synthetic weeks and a recorded training sequence; grants no approvals |
+| `prepare-payout-sample` | Prepare three synthetic payout weeks (`scenario`: `batched` default, or `basic`) and a recorded training sequence; grants no approvals |
+| `prepare-vendor-sample` | Same for the synthetic vendor price-list cleanup task (input name `prices`) |
+| `parameterize-pipeline` | Turn existing scalar step values into typed named parameters in a new unverified version |
 | `approve-example` | Human approves exact named inputs, source lineage and reference output; `needsApproval: true` |
 | `crystallize-task` | Extract immutable allowlisted DAG from training step logs; freeze references |
 | `verify-pipeline` | Self-test comparator, replay training and independent holdout |
 | `promote-pipeline` | Human approves exact candidate hash; activate verified version through audited action |
-| `run-task` | Zero-model replay with drift refusal and persisted metrics/version attribution |
+| `run-task` | Zero-model replay with drift refusal and persisted metrics/version attribution; also an MCP tool (`mcpTool: true`) with `list-tasks`, `get-task`, `list-tables` |
 | `list-tasks`, `get-task` | Scoped metadata, versions and run history |
 | `get-verification-diff` | Proven app UI only; bounded reference differences, not an agent/MCP tool |
 

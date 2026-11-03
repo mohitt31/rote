@@ -1,7 +1,62 @@
 const messages = {
   rote: {
+    demo: {
+      banner:
+        "Public demo: sample data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
+      nextReset: "Next reset at",
+    },
+    home: {
+      title: "Teach it once. Never pay for it again.",
+      body: "Rote turns a repetitive agent data job into a verified, versioned pipeline. It replays every week with zero model calls and stops instead of guessing when the input changes.",
+      open: "Open recurring tasks",
+      step1: "Teach once",
+      step1Body:
+        "The agent (or you) does the job with Rote's table actions. Every step is recorded.",
+      step2: "Verify before trusting",
+      step2Body:
+        "Rote proves its check works, then replays your approved reference and an unseen holdout. You approve the exact version.",
+      step3: "Replay for free",
+      step3Body:
+        "Next week runs deterministically in milliseconds. A changed format stops the run and can be taught as a new version.",
+      yourTasks: "Your tasks",
+      active: "Active pipelines",
+      replays: "Replays",
+      replayTokens: "Model tokens spent on replays",
+      driftStops: "Stopped on drift",
+      empty:
+        "No tasks yet. Prepare a sample task to see the whole loop in a minute.",
+      task: "Task",
+      version: "Version",
+      median: "Median",
+      measured: "Measured replay benchmark",
+      measuredBody:
+        "pnpm benchmark: each sample task taught once, then 18 unseen weeks replayed and checked against an independent reference.",
+      correct: "Correct weeks",
+      medianP95: "Median / p95",
+      tokens: "Tokens",
+      honest:
+        "Sample data only. Agent-run token and time costs are not shown until a real traced model run is recorded.",
+    },
     flow: {
       addInput: "Add input",
+      format: "format",
+      formatPrepared:
+        "Weeks 4–6 imported in the bank's changed export format (sample data). Review and approve the week-4 reference to start format 2.",
+      prepareFormatChange:
+        "Prepare sample: bank changes its export (weeks 4–6)",
+      reteach: "Teach the new format",
+      reteachHint:
+        "Approved references stay frozen. A changed input format gets its own training and holdout; the current version keeps running until the new one is verified and approved.",
+      reteachStarted:
+        "New format started. Approve its holdout, then crystallize, verify and approve the new version.",
+      reteachTitle: "Input format changed?",
+      prepareVendors: "Prepare sample vendor cleanup",
+      askAgent: "Ask the agent to handle this week",
+      changedSteps: "changed steps",
+      driftContext: "Stopped Rote run",
+      inputsChanged: "inputs changed",
+      newParameters: "new parameters",
+      step: "Step",
       advanced: "Advanced: parameters and raw plan",
       approved: "Approved",
       changedRejected: "Changed value rejected",
@@ -12,7 +67,7 @@ const messages = {
       columnsDiffer: "Output columns differ from the reference.",
       drift: "Stopped: drift",
       driftHelp:
-        "No output was written. Review the new input, then teach the change and crystallize a new version.",
+        "No output was written. Hand this week to the agent, or teach the new format as a new version.",
       droppedRejected: "Dropped row rejected",
       emptyBody:
         "Teach a recurring data job once, approve a reference and an unseen holdout, and Rote replays the recorded steps as a verified pipeline with no model calls.",
@@ -86,7 +141,7 @@ const messages = {
     createTask: "Create task",
     prepareSample: "Prepare sample payout demo",
     samplePrepared:
-      "Three synthetic weeks prepared without a model. Load training and holdout, review each reference, and approve them before crystallizing.",
+      "Three synthetic weeks prepared without a model. Review the training and holdout references below, then approve each one.",
     activePipeline: "Active pipeline",
     needsApproval: "Awaiting reference / pipeline approval",
     chooseTask: "Create or select a task to begin.",

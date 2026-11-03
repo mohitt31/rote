@@ -1,3 +1,4 @@
+import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import { writeClientAppState } from "@agent-native/core/client/application-state";
 import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
@@ -5,6 +6,7 @@ import {
   IconCheck,
   IconFlask,
   IconLock,
+  IconMessageCircle,
   IconPlayerPlay,
   IconPlus,
   IconShieldCheck,
@@ -17,6 +19,7 @@ import { Link, useSearchParams } from "react-router";
 import { ParameterizePipeline } from "@/components/ParameterizePipeline";
 import { PipelineSteps } from "@/components/rote/PipelineSteps";
 import { TablePicker, TablePreview } from "@/components/rote/TableBits";
+import { VersionDiff } from "@/components/rote/VersionDiff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,6 +90,8 @@ export default function Tasks() {
     [training, setTraining] = useState<Form>(emptyForm()),
     [holdout, setHoldout] = useState<Form>(emptyForm()),
     [next, setNext] = useState<Form>(emptyForm()),
+    [retrain, setRetrain] = useState(false),
+    [retrainForm, setRetrainForm] = useState<Form>(emptyForm()),
     [lastRun, setLastRun] = useState<{
       status: string;
       message: string;
@@ -110,6 +115,8 @@ export default function Tasks() {
     setHoldout(stored ? fromDraft(stored.holdout) : emptyForm());
     setNext(stored ? fromDraft(stored.next) : emptyForm());
     setLastRun(null);
+    setRetrain(false);
+    setRetrainForm(emptyForm());
     setError("");
     setNotice("");
   }, [id, t]);
@@ -132,21 +139,27 @@ export default function Tasks() {
   const data = detail.data;
   const view = useMemo(() => {
     if (!data) return null;
-    const trainingEx = data.examples.find((e) => !e.holdout),
-      holdoutEx = data.examples.find((e) => e.holdout),
-      latest = data.versions[0],
+    // Steps 1–4 follow the newest example generation; step 5 runs the active version.
+    const gen = data.generation,
+      examples = data.examples.filter((e) => e.generation === gen),
+      versions = data.versions.filter((v) => v.generation === gen),
+      trainingEx = examples.find((e) => !e.holdout),
+      holdoutEx = examples.find((e) => e.holdout),
+      latest = versions[0],
       active = data.versions.find((v) => v.id === data.task.currentPipelineId),
       replays = data.runs.filter((r) => r.mode === "pipeline"),
       teach = data.runs.find((r) => r.mode !== "pipeline");
     const done = [
       !!trainingEx && !!holdoutEx,
-      data.versions.length > 0,
+      versions.length > 0,
       !!latest && ["verified", "approved"].includes(latest.status),
       !!latest && latest.status === "approved",
       replays.some((r) => r.status === "succeeded"),
     ];
     const current = done.findIndex((d) => !d);
     return {
+      gen,
+      frozen: versions.length > 0,
       trainingEx,
       holdoutEx,
       latest,
@@ -194,9 +207,12 @@ export default function Tasks() {
     );
   }, [activeNames]);
 
-  const prepareSample = () =>
-    perform("sample", async () => {
-      const result = await callAction("prepare-payout-sample", {});
+  const prepareSample = (kind: "payouts" | "vendors") =>
+    perform(`sample-${kind}`, async () => {
+      const result =
+        kind === "payouts"
+          ? await callAction("prepare-payout-sample", {})
+          : await callAction("prepare-vendor-sample", {});
       sessionStorage.setItem(
         `rote-demo:${result.taskId}`,
         JSON.stringify(result),
@@ -240,15 +256,22 @@ export default function Tasks() {
               <IconPlus className="size-4" />
             </Button>
           </form>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-muted-foreground"
-            disabled={!!busy}
-            onClick={() => void prepareSample()}
-          >
-            <IconFlask className="size-4" />
-            {busy === "sample" ? t("rote.working") : t("rote.prepareSample")}
-          </Button>
+          {(["payouts", "vendors"] as const).map((kind) => (
+            <Button
+              key={kind}
+              variant="ghost"
+              className="w-full justify-start gap-2 text-muted-foreground"
+              disabled={!!busy}
+              onClick={() => void prepareSample(kind)}
+            >
+              <IconFlask className="size-4" />
+              {busy === `sample-${kind}`
+                ? t("rote.working")
+                : kind === "payouts"
+                  ? t("rote.prepareSample")
+                  : t("rote.flow.prepareVendors")}
+            </Button>
+          ))}
         </div>
         <nav className="space-y-1" aria-label={t("rote.tasksTitle")}>
           {list.isLoading && (
@@ -301,7 +324,7 @@ export default function Tasks() {
           </p>
         )}
         {!id && (
-          <EmptyState onSample={() => void prepareSample()} busy={!!busy} />
+          <EmptyState onSample={(k) => void prepareSample(k)} busy={!!busy} />
         )}
         {id && detail.isLoading && (
           <div className="h-64 animate-pulse rounded-xl bg-muted" />
@@ -335,14 +358,18 @@ export default function Tasks() {
             <Step
               n={1}
               state={stateOf(0, view)}
-              title={t("rote.flow.s1")}
+              title={
+                view.gen > 1
+                  ? `${t("rote.flow.s1")} · ${t("rote.flow.format")} ${view.gen}`
+                  : t("rote.flow.s1")
+              }
               hint={t("rote.flow.s1Hint")}
             >
               <div className="grid gap-4">
                 <ExampleCard
                   title={t("rote.flow.trainingExample")}
                   approved={view.trainingEx?.inputNames}
-                  frozen={data.versions.length > 0}
+                  frozen={view.frozen}
                   form={training}
                   setForm={setTraining}
                   withSource
@@ -371,7 +398,7 @@ export default function Tasks() {
                   title={t("rote.flow.holdoutExample")}
                   subtitle={t("rote.flow.holdoutHint")}
                   approved={view.holdoutEx?.inputNames}
-                  frozen={data.versions.length > 0}
+                  frozen={view.frozen}
                   form={holdout}
                   setForm={setHoldout}
                   editableNames={false}
@@ -394,6 +421,92 @@ export default function Tasks() {
                   }
                 />
               </div>
+              {view.frozen && view.active && (
+                <div className="mt-4 space-y-3 rounded-lg border border-dashed p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {t("rote.flow.reteachTitle")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("rote.flow.reteachHint")}
+                      </p>
+                    </div>
+                    {!retrain && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRetrain(true)}
+                      >
+                        {t("rote.flow.reteach")}
+                      </Button>
+                    )}
+                  </div>
+                  {retrain && (
+                    <>
+                      {data.task.name.startsWith("Sample batched payout") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2 text-muted-foreground"
+                          disabled={!!busy}
+                          onClick={() =>
+                            void perform("format", async () => {
+                              const r = await callAction(
+                                "prepare-format-change-sample",
+                                { taskId: id },
+                              );
+                              sessionStorage.setItem(
+                                `rote-demo:${id}`,
+                                JSON.stringify(r),
+                              );
+                              setDraft(r);
+                              setRetrainForm(fromDraft(r.training));
+                              setHoldout(fromDraft(r.holdout));
+                              setNext(fromDraft(r.next));
+                              setNotice(t("rote.flow.formatPrepared"));
+                            })
+                          }
+                        >
+                          <IconFlask className="size-4" />
+                          {busy === "format"
+                            ? t("rote.working")
+                            : t("rote.flow.prepareFormatChange")}
+                        </Button>
+                      )}
+                      <ExampleCard
+                        title={`${t("rote.flow.trainingExample")} · ${t("rote.flow.format")} ${view.gen + 1}`}
+                        frozen={false}
+                        form={retrainForm}
+                        setForm={setRetrainForm}
+                        withSource
+                        editableNames
+                        busy={busy === "retrain"}
+                        disabled={!!busy}
+                        onApprove={() =>
+                          perform("retrain", async () => {
+                            await callAction("approve-example", {
+                              taskId: id,
+                              inputs: toBindings(retrainForm.inputs),
+                              parameterValues: parameterValuesSchema.parse(
+                                JSON.parse(retrainForm.params),
+                              ),
+                              outputTableId: retrainForm.output,
+                              ...(retrainForm.source
+                                ? { sourceOutputTableId: retrainForm.source }
+                                : {}),
+                              holdout: false,
+                              retrain: true,
+                            });
+                            setRetrain(false);
+                            setNotice(t("rote.flow.reteachStarted"));
+                          })
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </Step>
 
             <Step
@@ -420,6 +533,15 @@ export default function Tasks() {
                       <PipelineSteps plan={view.latest.plan} />
                     </div>
                   </details>
+                  {data.versions[1] &&
+                    data.versions[1].hash !== view.latest.hash && (
+                      <VersionDiff
+                        from={data.versions[1].plan}
+                        to={view.latest.plan}
+                        fromVersion={data.versions[1].version}
+                        toVersion={view.latest.version}
+                      />
+                    )}
                   <details className="rounded-lg border px-3 py-2">
                     <summary className="cursor-pointer text-sm text-muted-foreground">
                       {t("rote.flow.advanced")}
@@ -533,6 +655,26 @@ export default function Tasks() {
                   <span className="break-all font-mono text-xs text-muted-foreground">
                     sha256 {view.latest.hash}
                   </span>
+                  {data.versions.length > 1 && (
+                    <ul className="w-full space-y-1 text-xs text-muted-foreground">
+                      {data.versions.map((v) => (
+                        <li key={v.id} className="flex flex-wrap gap-2">
+                          <span className="font-medium text-foreground">
+                            v{v.version}
+                          </span>
+                          <span>{v.status}</span>
+                          <span className="font-mono">
+                            {v.hash.slice(0, 12)}
+                          </span>
+                          {v.id === data.task.currentPipelineId && (
+                            <span className="text-emerald-700 dark:text-emerald-400">
+                              {t("rote.flow.chipActive")}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </Step>
@@ -618,6 +760,43 @@ export default function Tasks() {
                       </p>
                       {lastRun.outputTableId && (
                         <TablePreview id={lastRun.outputTableId} />
+                      )}
+                      {lastRun.status !== "succeeded" && (
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() =>
+                            sendToAgentChat({
+                              message: `This week's input stopped the approved "${data.task.name}" pipeline: ${lastRun.message}. Inspect the input tables, then redo the job with the Rote step actions so every step is recorded. Do not change the approved pipeline, frozen references or tolerances. Finish by telling me which output table to review.`,
+                              context: JSON.stringify({
+                                taskId: id,
+                                pipelineVersion: view.active?.version,
+                                inputs: toBindings(next.inputs),
+                                stopReason: lastRun.message,
+                              }),
+                              contextLabel: t("rote.flow.driftContext"),
+                              submit: false,
+                              openSidebar: true,
+                            })
+                          }
+                        >
+                          <IconMessageCircle className="size-4" />
+                          {t("rote.flow.askAgent")}
+                        </Button>
+                      )}
+                      {lastRun.status !== "succeeded" && (
+                        <Button
+                          variant="ghost"
+                          className="gap-2"
+                          onClick={() => {
+                            setRetrain(true);
+                            document
+                              .getElementById("step-1")
+                              ?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                        >
+                          {t("rote.flow.reteach")}
+                        </Button>
                       )}
                     </div>
                   )}
@@ -1030,7 +1209,7 @@ function EmptyState({
   onSample,
   busy,
 }: {
-  onSample: () => void;
+  onSample: (kind: "payouts" | "vendors") => void;
   busy: boolean;
 }) {
   const t = useT();
@@ -1057,10 +1236,25 @@ function EmptyState({
           </li>
         ))}
       </ol>
-      <Button className="gap-2" disabled={busy} onClick={onSample}>
-        <IconFlask className="size-4" />
-        {t("rote.prepareSample")}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          className="gap-2"
+          disabled={busy}
+          onClick={() => onSample("payouts")}
+        >
+          <IconFlask className="size-4" />
+          {t("rote.prepareSample")}
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          disabled={busy}
+          onClick={() => onSample("vendors")}
+        >
+          <IconFlask className="size-4" />
+          {t("rote.flow.prepareVendors")}
+        </Button>
+      </div>
     </div>
   );
 }

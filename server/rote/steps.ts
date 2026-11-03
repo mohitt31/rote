@@ -134,8 +134,12 @@ export function applyStep(
       const p = stepSchemas[name].parse(raw);
       if (p.decimal === p.thousands)
         throw Error("Decimal and thousands separators must differ");
+      const options = {
+        ...p,
+        thousands: p.thousands === "none" ? "" : p.thousands,
+      };
       return mapped(table, p.column, p.newColumn ?? p.column, (v) =>
-        parseNumber(v, p),
+        parseNumber(v, options),
       );
     }
     case "normalize_text": {

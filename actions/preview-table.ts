@@ -2,6 +2,7 @@ import { defineAction } from "@agent-native/core/action";
 import { z } from "zod";
 
 import { scopeFor, guarded, errors } from "../server/rote/action-helpers.js";
+import { assertReadable } from "../server/rote/holdout-guard.js";
 import { readTable } from "../server/rote/repository.js";
 import { cellSchema } from "../shared/rote/model.js";
 export default defineAction({
@@ -25,6 +26,7 @@ export default defineAction({
   http: { method: "GET" },
   run: ({ inputTableId, offset, limit }, ctx) =>
     guarded(async () => {
+      await assertReadable([inputTableId], scopeFor(ctx), ctx);
       const t = await readTable(inputTableId, scopeFor(ctx));
       return {
         id: t.id,

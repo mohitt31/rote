@@ -2,6 +2,7 @@ import { defineAction } from "@agent-native/core/action";
 import { z } from "zod";
 
 import { errors, guarded, scopeFor } from "../server/rote/action-helpers.js";
+import { maybeResetDemo } from "../server/rote/demo.js";
 import { listTasks } from "../server/rote/workflow.js";
 import { bindingsSchema, toleranceSchema } from "../shared/rote/pipeline.js";
 import {
@@ -13,6 +14,11 @@ export default defineAction({
   schema: z.object({}),
   outputSchema: z.array(taskSchema),
   errors,
+  mcpTool: true,
   http: { method: "GET" },
-  run: (a, ctx) => guarded(() => listTasks(scopeFor(ctx))),
+  run: (a, ctx) =>
+    guarded(async () => {
+      await maybeResetDemo(scopeFor(ctx));
+      return listTasks(scopeFor(ctx));
+    }),
 });

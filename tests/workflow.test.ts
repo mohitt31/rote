@@ -439,3 +439,124 @@ it("generalizes an existing scalar without modifying frozen examples or approved
     ),
   ).rejects.toThrow();
 });
+
+it("cleans an unseen vendor price list after teaching one week", async () => {
+  const { prepareVendorSample } =
+    await import("../server/rote/vendor-sample.js");
+  const { vendorCleanupSample } = await import("../shared/rote/samples.js");
+  const fixture = await prepareVendorSample(scope);
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.training.inputs,
+      outputTableId: fixture.training.outputTableId!,
+      sourceOutputTableId: fixture.training.sourceOutputTableId!,
+      holdout: false,
+    },
+    scope,
+  );
+  await approveExample(
+    {
+      taskId: fixture.taskId,
+      inputs: fixture.holdout.inputs,
+      outputTableId: fixture.holdout.outputTableId!,
+      holdout: true,
+    },
+    scope,
+  );
+  const p = await crystallizeTask(fixture.taskId, scope);
+  expect((await verifyPipeline(p.id, scope)).pass).toBe(true);
+  await promotePipeline(p.id, p.hash, scope);
+  const out = await runTask(fixture.taskId, fixture.next.inputs, scope);
+  expect(out.status).toBe("succeeded");
+  expect(
+    compareTables(
+      vendorCleanupSample(3).expected,
+      await readTable(out.outputTableId!, scope),
+    ).pass,
+  ).toBe(true);
+  // Conflicting prices for one SKU must stop instead of keeping one silently.
+  const conflict = await readTable(fixture.next.inputs.prices, scope);
+  conflict.rows.push({ ...conflict.rows[1]!, "Unit Price": "$1.00" });
+  const dup = await saveImport(conflict, "conflict", scope, {
+    sha256: "vendor-conflict",
+    sample: true,
+  });
+  expect(
+    (await runTask(fixture.taskId, { prices: dup.outputTableId }, scope))
+      .status,
+  ).toBe("drift");
+  // A new unit code is unknown to the approved mapping: stop, never guess.
+  const week = await readTable(fixture.next.inputs.prices, scope);
+  week.rows[0]!.UOM = "dozen";
+  const changed = await saveImport(week, "new-unit", scope, {
+    sha256: "vendor-new-unit",
+    sample: true,
+  });
+  expect(
+    (await runTask(fixture.taskId, { prices: changed.outputTableId }, scope))
+      .status,
+  ).toBe("drift");
+});
+
+it("re-teaches a changed bank format as v2 without unfreezing v1 references", async () => {
+  const { prepareBatchedSample, prepareBankFormatChange } =
+    await import("../server/rote/batched-sample.js");
+  const { batchedPayoutSample } = await import("../shared/rote/samples.js");
+  const v1 = await prepareBatchedSample(scope);
+  const approve = (
+    e: (typeof v1)["training"],
+    holdout: boolean,
+    retrain = false,
+  ) =>
+    approveExample(
+      {
+        taskId: v1.taskId,
+        inputs: e.inputs,
+        outputTableId: e.outputTableId!,
+        ...(holdout ? {} : { sourceOutputTableId: e.sourceOutputTableId! }),
+        holdout,
+        retrain,
+      },
+      scope,
+    );
+  await approve(v1.training, false);
+  await approve(v1.holdout, true);
+  const p1 = await crystallizeTask(v1.taskId, scope);
+  expect((await verifyPipeline(p1.id, scope)).pass).toBe(true);
+  await promotePipeline(p1.id, p1.hash, scope);
+
+  const v2 = await prepareBankFormatChange(v1.taskId, scope);
+  // The new format drifts under v1 and writes nothing.
+  expect((await runTask(v1.taskId, v2.next.inputs, scope)).status).toBe(
+    "drift",
+  );
+  // Frozen without an explicit new generation; holdout cannot start one.
+  await expect(approve(v2.training, false)).rejects.toThrow(/frozen/);
+  await expect(approve(v2.holdout, true, true)).rejects.toThrow(/generation/);
+  expect((await approve(v2.training, false, true)).generation).toBe(2);
+  expect((await approve(v2.holdout, true)).generation).toBe(2);
+
+  const p2 = await crystallizeTask(v1.taskId, scope);
+  expect(p2.version).toBe(2);
+  // v2 verifies only against generation-2 references.
+  const check = await verifyPipeline(p2.id, scope);
+  expect(check.pass).toBe(true);
+  // v1 stays active and keeps serving old-format weeks until v2 is approved.
+  expect((await getTask(v1.taskId, scope)).task.currentPipelineId).toBe(p1.id);
+  await promotePipeline(p2.id, p2.hash, scope);
+  const out = await runTask(v1.taskId, v2.next.inputs, scope);
+  expect(out.status).toBe("succeeded");
+  expect(
+    compareTables(
+      batchedPayoutSample(6).expected,
+      await readTable(out.outputTableId!, scope),
+    ).pass,
+  ).toBe(true);
+  const detail = await getTask(v1.taskId, scope);
+  expect(detail.generation).toBe(2);
+  expect(detail.versions.map((v) => [v.version, v.generation])).toEqual([
+    [2, 2],
+    [1, 1],
+  ]);
+});

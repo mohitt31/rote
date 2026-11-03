@@ -14,7 +14,7 @@ import {
 } from "../shared/rote/workflow-output.js";
 export default defineAction({
   description:
-    "Approve reviewed reference output as a training or holdout example. Requires human approval. Examples freeze on crystallization.",
+    "Approve reviewed reference output as a training or holdout example. Requires human approval. Examples freeze on crystallization; set retrain on a training example to start a new generation for a changed input format.",
   schema: z.object({
     taskId: z.string().uuid(),
     inputs: bindingsSchema,
@@ -22,8 +22,9 @@ export default defineAction({
     outputTableId: z.string().uuid(),
     sourceOutputTableId: z.string().uuid().optional(),
     holdout: z.boolean().default(false),
+    retrain: z.boolean().default(false),
   }),
-  outputSchema: z.object({ id: z.string() }),
+  outputSchema: z.object({ id: z.string(), generation: z.number() }),
   errors,
   needsApproval: true,
   run: (a, ctx) => guarded(() => approveExample(a, scopeFor(ctx))),

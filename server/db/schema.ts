@@ -108,6 +108,8 @@ export const goldenExamples = pgTable("rote_golden_examples", {
     .notNull()
     .references(() => tables.id),
   holdout: boolean("holdout").notNull().default(false),
+  // Examples are frozen per generation; a changed input format starts a new one.
+  generation: integer("generation").notNull().default(1),
   ownerEmail: text("owner_email").notNull(),
   orgId: text("org_id"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -123,6 +125,7 @@ export const pipelines = pgTable("rote_pipelines", {
   steps: jsonb("steps").notNull(),
   paramsSchema: jsonb("params_schema").notNull(),
   status: text("status").notNull(),
+  generation: integer("generation").notNull().default(1),
   createdFromRunId: text("created_from_run_id").references(() => runs.id),
   ownerEmail: text("owner_email").notNull(),
   orgId: text("org_id"),

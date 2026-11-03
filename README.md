@@ -2,19 +2,18 @@
 
 **Teach it once. Never pay for it again.**
 
-Rote is being built to turn repeated agent-led data jobs into verified, versioned deterministic pipelines. The Day 3 build adds a task approval, verification and deterministic replay loop. Its automated end-to-end tests use a mocked agent; the live model-and-human acceptance gate remains pending.
+Rote turns repeated agent-led data jobs into verified, versioned deterministic pipelines that replay with zero model calls. Automated end-to-end tests use a mocked agent; the live model-backed teaching run remains pending.
 
 ## Current status
 
-- Official standalone Chat template, scaffolded from `@agent-native/core@0.222.2`.
-- Local Node 22.22.0 and pnpm 10.34.9 bootstrap; no global tool changes required.
-- Framework chat, local authentication, embedded PGlite database, and `hello` action.
-- Tool argument/result trace capture enabled; prompt capture and optional LLM judge disabled.
-- Gemini Flash-Lite configured through the framework; provider credentials stay in ignored `.env`.
-- Fifteen deterministic table actions, CSV/XLSX import, preview/export, scoped SQL storage and step logs. Open `/workbench`.
-- Synthetic payout/vendor generators, comparator groundwork and a measured primitive benchmark.
-- `/tasks`: human-approved training/holdout references, recorded-lineage crystallization, verification, exact-hash promotion and deterministic replay.
-- Drift stops replay for review. Automated repair/fallback and scheduling remain future work.
+- Standalone Agent-Native app scaffolded from the Chat template (`@agent-native/core@0.222.2`), with a local Node 22.22.0 / pnpm bootstrap.
+- `/home`: overview of the loop, live per-task totals from recorded runs, and the measured benchmark.
+- `/tasks`: a guided five-step flow — approve a training reference and an unseen holdout → crystallize the recorded steps → verify (comparator self-check, then every frozen reference) → approve the exact version hash → replay next week with zero model calls.
+- Drift or a failed recorded validation stops a run without output. The stopped week can be handed to the agent chat, and a changed input format can be taught as a new version in the same task (v1 keeps running until v2 is verified and approved; the UI shows a step diff).
+- Two sample tasks with independent references, plus a "bank changes its export" scenario: batched payout reconciliation and vendor price-list cleanup (all synthetic, labelled as sample data).
+- Approved holdout references are hidden from agent, MCP, A2A, CLI and automation callers; only the signed-in app UI can read them.
+- `run-task` works from the UI, the CLI and MCP, all verified locally. A public demo mode (`ROTE_PUBLIC_DEMO`) turns the agent off server-side and resets shared data hourly.
+- **Not yet done:** a real model-backed teaching run (needs the user's Gemini key), so no agent token/cost numbers are claimed anywhere. Automated repair, scheduling, eval promotion, CDSCO data (fetch script ready, host blocked in the cloud build) and deployment are pending.
 
 ## Local setup
 
@@ -43,42 +42,49 @@ Useful commands:
 ./scripts/local pnpm action hello --name Mohit
 ```
 
-See `docs/day-3.md` for the core loop and acceptance limits, and `docs/day-2.md` for primitive/import details. `docs/progress-2026-10-31.md` retains the Day 1 record.
+See `docs/day-4.md` for the latest progress, `docs/day-3.md` for the core loop, and `docs/day-2.md` for primitive/import details. `docs/progress-2026-10-31.md` retains the Day 1 record.
 
-## Planned workflow
+## How it works
 
 ```mermaid
 flowchart LR
-  A[Agent calls table actions] --> B[Human approves output]
-  B --> C[Crystallize recorded steps]
-  C --> D[Validate comparator]
-  D --> E[Replay goldens and unseen holdout]
-  E --> F[Human approves exact version]
-  F --> G[Deterministic runs]
-  G --> H{Input drift?}
-  H -->|Yes| A
+  A[Agent or recorded steps call table actions] --> B[Human approves training + holdout references]
+  B --> C[Crystallize step log into allowlisted pipeline]
+  C --> D[Self-check comparator, replay all references]
+  D --> E[Human approves exact version hash]
+  E --> F[Zero-model replay every week]
+  F --> G{Drift or failed validation?}
+  G -->|Yes| H[Stop, no output; hand week to agent]
 ```
 
-The verifier and reference examples will remain outside the repair model's editable surface. Pipelines will contain allowlisted step definitions, not generated executable code. Numeric tolerance must be declared by the task.
+The verifier and reference examples are outside the editable surface of any pipeline change. Pipelines contain allowlisted step definitions, not generated executable code. Numeric tolerance must be declared by the task.
 
 ## Framework feature map
 
-| Capability | Current source or planned integration | Status |
+| Capability | Source | Status |
 | --- | --- | --- |
-| Shared actions | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus import, preview, list and export; tested |
-| Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, `actions/navigate.ts` | Template retained |
-| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Capture and scoped metric import implemented; real model trace pending |
-| Approval and audit | `actions/approve-example.ts`, `actions/promote-pipeline.ts` | Framework approval gates and audit; live human acceptance pending |
-| Automations | Framework automation surface | Planned; agent-backed scheduler is not inherently zero-token |
-| Evals | Future regression fixtures from real traces | Planned |
-| CLI / HTTP / MCP | Framework action surfaces | Only surfaces actually exercised will be marked verified |
-| Clips and Slides | Agent-Native apps | Planned; no public artifacts yet |
+| Shared actions (UI + agent + CLI + MCP) | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus task lifecycle actions; tested |
+| CLI | `pnpm action run-task '{"taskId":…,"inputs":{…}}'` | Verified locally (set `AGENT_ORG_ID` to the workspace org) |
+| MCP | `mcpTool: true` on `run-task`, `list-tasks`, `get-task`, `list-tables` | Verified locally: `tools/list` + `tools/call run-task` with a token from `/mcp/connect` |
+| Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, drift hand-off in `app/routes/tasks.tsx` | Hand-off verified in the browser; model answer pending a key |
+| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Capture configured; real model trace pending |
+| Approval and audit | `actions/approve-example.ts`, `actions/promote-pipeline.ts` (`needsApproval: true`) | Framework approval gates and audit |
+| Public demo mode | `server/rote/demo.ts`, `server/plugins/agent-chat.ts` (`prepareRequest`) | Verified locally: banner, sample flow, agent request refused with 403 |
+| Automations, evals | — | Planned; not claimed |
+| Clips and Slides | Agent-Native apps | Planned |
 
-Agent-Native already provides stored Data Programs. Rote's proposed distinction is verification of a constrained action pipeline against approved examples and an unseen holdout, with a validated comparator and measured replay savings. We do not claim the framework has no reusable transformation capability.
+Agent-Native already provides stored Data Programs. Rote's distinction is verification of a constrained action pipeline against approved examples and an unseen holdout, with a validated comparator and measured replay.
 
 ## Benchmarks and data
 
-The six-step in-memory primitive benchmark on 10,000 rows measured 13.62 ms median and 16.32 ms p95 over 20 runs after one warmup. Raw measurements and machine metadata are in `benchmark/primitives.json`; this excludes parsing, SQL, HTTP and UI. No agent comparison or savings measurement has been performed. Payout and vendor generators are explicitly labeled sample data. CDSCO snapshots will retain provenance, fetch date, and SHA-256; none have been fetched yet.
+`./scripts/local pnpm benchmark` teaches each sample task once, replays 18 unseen weeks through the persisted `run-task` path (in-memory PGlite with the app's migrations) and checks every output against the generator's independent reference. Latest run (`benchmark/results.md`, sample data, cloud Xeon VM, 1 Nov 2026):
+
+| Task | Unseen weeks correct | Replay median / p95 | Model tokens per replay | Drift cases stopped |
+| --- | --- | --- | --- | --- |
+| Batched payout reconciliation | 18/18 | 8.2 / 13.6 ms | 0 | 3/3 |
+| Vendor price-list cleanup | 18/18 | 5.6 / 7.6 ms | 0 | 3/3 |
+
+Agent-only runs have **not** been measured; that comparison stays empty until a real traced model run exists. The separate in-memory primitive benchmark (`benchmark/primitives.json`, Apple M4) measured 13.62 ms median for six steps on 10,000 rows. Payout and vendor data is synthetic and labelled as sample data. `scripts/fetch-cdsco.ts` fetches real CDSCO NSQ monthly lists with provenance, but has not been run yet.
 
 ## Pre-existing work and attribution
 
