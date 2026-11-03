@@ -50,7 +50,14 @@ export const stepSchemas = {
     .object({
       column,
       decimal: z.enum([".", ","]).default("."),
-      thousands: z.enum([",", ".", " ", ""]).default(","),
+      // Gemini rejects empty enum members; retain the same runtime allowlist.
+      thousands: z
+        .string()
+        .refine(
+          (v) => [",", ".", " ", ""].includes(v),
+          "Thousands separator must be comma, dot, space or empty",
+        )
+        .default(","),
       currency: z.string().max(10).default(""),
       newColumn: column.optional(),
     })
