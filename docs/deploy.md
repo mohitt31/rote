@@ -30,6 +30,7 @@ Create two Netlify sites from the GitHub repository (build settings come from `n
 | `AGENT_ENGINE` / `AGENT_MODEL` | as in `.env.example` | not needed |
 | `AUTH_DISABLED` | not set | `true` |
 | `ROTE_PUBLIC_DEMO` | not set | `true` |
+| `AGENT_NATIVE_CONFIG_RUNTIME_AUTH_ENABLED` | not set | `false` (set for build and runtime; without it the framework shows an "Authentication is disabled in production" configuration notice to every visitor) |
 
 `netlify.toml` no longer carries the template's analytics IDs or its trusted origins; set the trusted origin per site.
 
