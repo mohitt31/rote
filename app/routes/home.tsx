@@ -36,6 +36,7 @@ function StartHere() {
           `rote-demo:${result.taskId}`,
           JSON.stringify(result),
         );
+        sessionStorage.setItem("rote-demo:last", result.taskId);
       } catch {
         // Storage can be unavailable; the Tasks screen still loads the task.
       }
@@ -46,8 +47,36 @@ function StartHere() {
     }
   };
   const agentOff = demo.data?.publicDemo && !demo.data.agent;
-  const ask = (message: string) =>
-    sendToAgentChat({ message, submit: false, openSidebar: true });
+  // When this browser prepared a task, hand the agent its exact IDs so the
+  // request needs one or two tool calls instead of a search.
+  const ask = (kind: "run" | "drift" | "restraint") => {
+    let last: { taskId: string; next?: { inputs: Record<string, string> } } | null =
+      null;
+    try {
+      const id = sessionStorage.getItem("rote-demo:last");
+      const raw = id ? sessionStorage.getItem(`rote-demo:${id}`) : null;
+      last = id && raw ? { ...JSON.parse(raw), taskId: id } : null;
+    } catch {
+      last = null;
+    }
+    const exact = kind !== "restraint" && last?.next?.inputs;
+    sendToAgentChat({
+      message: exact
+        ? t(`rote.home.ask.${kind}Exact`)
+        : t(`rote.home.ask.${kind}Prompt`),
+      ...(exact
+        ? {
+            context: JSON.stringify({
+              taskId: last!.taskId,
+              nextInputs: last!.next!.inputs,
+            }),
+            contextLabel: t("rote.home.ask.contextLabel"),
+          }
+        : {}),
+      submit: false,
+      openSidebar: true,
+    });
+  };
   return (
     <section
       aria-labelledby="start-here"
@@ -83,7 +112,7 @@ function StartHere() {
                 key={k}
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal py-2 text-left"
-                onClick={() => ask(t(`rote.home.ask.${k}Prompt`))}
+                onClick={() => ask(k)}
               >
                 <IconMessageCircle className="size-4 shrink-0" />
                 {t(`rote.home.ask.${k}`)}

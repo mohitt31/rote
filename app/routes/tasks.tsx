@@ -242,6 +242,7 @@ export default function Tasks() {
         `rote-demo:${result.taskId}`,
         JSON.stringify(result),
       );
+      sessionStorage.setItem("rote-demo:last", result.taskId);
       setSearch({ task: result.taskId });
       setNotice(t("rote.samplePrepared"));
     });
@@ -487,6 +488,7 @@ export default function Tasks() {
                                 `rote-demo:${id}`,
                                 JSON.stringify(r),
                               );
+                              sessionStorage.setItem("rote-demo:last", id);
                               setDraft(r);
                               setRetrainForm(fromDraft(r.training));
                               setHoldout(fromDraft(r.holdout));

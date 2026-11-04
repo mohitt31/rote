@@ -20,6 +20,7 @@ const INITIAL_TOOL_NAMES = [
   "get-task",
   "run-task",
   "propose-drift-fix",
+  "prepare-format-change-sample",
   "get-restraint-report",
   "import-file",
   "preview-table",
@@ -78,7 +79,7 @@ How a job is taught: import or locate the input tables (list-tables, import-file
 
 After a human approves a training reference and an independent holdout, crystallize-task turns the recorded steps into a pipeline, verify-pipeline checks it, and the human approves the exact version. run-task then replays it with zero model calls. If a run stops on drift, help with that week using the step actions; a changed format can be taught as a new version by approving a new training example with retrain set, then its own holdout.
 
-Sample preparation actions (prepare-payout-sample, prepare-vendor-sample, prepare-format-change-sample) are deterministic synthetic fixtures, never agent runs. Label sample data as sample.
+Sample preparation actions (prepare-payout-sample, prepare-vendor-sample, prepare-format-change-sample) are deterministic synthetic fixtures, never agent runs. Label sample data as sample. prepare-cdsco-task loads real public CDSCO drug-alert months and records January's steps with a script; it is real data but still not an agent run.
 
 Formula syntax: compute-column references use square brackets, for example [net_cents] - [amount_minor]; bare identifiers are invalid. join requires params.rightTableId. Never use run-code to transform rows.
 

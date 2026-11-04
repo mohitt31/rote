@@ -68,6 +68,11 @@ const messages = {
         drift: "The bank changed its export format. Handle it.",
         driftPrompt:
           "The bank changed its export format this week. Run the approved payout pipeline on the newest bank and payouts tables; if it stops on drift, call propose-drift-fix with the same inputs and tell me exactly what changed and which output table I should review.",
+        runExact:
+          "Run the approved pipeline for the task in the attached context: call run-task once with that taskId and nextInputs as inputs. Do not redo the job with step actions. Report the status, time and model tokens exactly as run-task returns them.",
+        driftExact:
+          "The bank is changing its export format. For the task in the attached context: call prepare-format-change-sample with that taskId, then run-task with the training inputs it returns. If the run stops on drift, call propose-drift-fix with the same taskId and inputs and tell me exactly what changed. Do not redo the job with step actions.",
+        contextLabel: "Task prepared in this browser",
         restraint: "Which repeated agent work should become a pipeline?",
         restraintPrompt:
           "Call get-restraint-report and tell me which repeated agent jobs are not covered by an approved pipeline yet, with the runs, tokens and time it reports. Do not estimate anything it does not report.",
