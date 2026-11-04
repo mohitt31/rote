@@ -152,6 +152,7 @@ const messages = {
       removeInput: "Remove input",
       replayRun: "Pipeline replay",
       replayed: "Replayed",
+      compareRaw: "Compare with the raw input ({{name}}) as it arrived",
       reverify: "Re-run verification",
       rowsMatch: "All rows match",
       s1: "Approve references",

@@ -791,6 +791,19 @@ export default function Tasks() {
                       {lastRun.outputTableId && (
                         <TablePreview id={lastRun.outputTableId} />
                       )}
+                      {lastRun.outputTableId &&
+                        next.inputs
+                          .filter((b) => b.tableId)
+                          .map((b) => (
+                            <details key={b.name} className="text-sm">
+                              <summary className="cursor-pointer text-muted-foreground">
+                                {t("rote.flow.compareRaw", { name: b.name })}
+                              </summary>
+                              <div className="mt-2">
+                                <TablePreview id={b.tableId} rows={4} />
+                              </div>
+                            </details>
+                          ))}
                       {lastRun.status !== "succeeded" && (
                         <Button
                           variant="outline"
