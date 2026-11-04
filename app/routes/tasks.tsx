@@ -97,7 +97,27 @@ export default function Tasks() {
       message: string;
       durationMs: number;
       outputTableId: string | null;
-    } | null>(null);
+    } | null>(null),
+    [fix, setFix] = useState<
+      | {
+          status: "proposed";
+          changes: (
+            | { kind: "rename"; input: string; from: string; to: string }
+            | {
+                kind: "date_format";
+                input: string;
+                column: string;
+                from: string[];
+                to: string;
+              }
+          )[];
+          sourceOutputTableId: string;
+          rowCount: number;
+          durationMs: number;
+        }
+      | { status: "unsupported" | "no_drift"; reason: string }
+      | null
+    >(null);
 
   useEffect(() => {
     void writeClientAppState("rote-task-selection", {
@@ -115,6 +135,7 @@ export default function Tasks() {
     setHoldout(stored ? fromDraft(stored.holdout) : emptyForm());
     setNext(stored ? fromDraft(stored.next) : emptyForm());
     setLastRun(null);
+    setFix(null);
     setRetrain(false);
     setRetrainForm(emptyForm());
     setError("");
@@ -724,6 +745,7 @@ export default function Tasks() {
                           ),
                         });
                         setLastRun(r);
+                        setFix(null);
                       })
                     }
                   >
@@ -783,6 +805,75 @@ export default function Tasks() {
                           <IconMessageCircle className="size-4" />
                           {t("rote.flow.askAgent")}
                         </Button>
+                      )}
+                      {lastRun.status !== "succeeded" && (
+                        <Button
+                          className="gap-2"
+                          disabled={!!busy}
+                          onClick={() =>
+                            void perform("fix", async () => {
+                              setFix(
+                                await callAction("propose-drift-fix", {
+                                  taskId: id,
+                                  inputs: toBindings(next.inputs),
+                                }),
+                              );
+                            })
+                          }
+                        >
+                          <IconFlask className="size-4" />
+                          {busy === "fix"
+                            ? t("rote.working")
+                            : t("rote.flow.suggestFix")}
+                        </Button>
+                      )}
+                      {lastRun.status !== "succeeded" && fix && (
+                        <div className="space-y-2 rounded-md border border-dashed p-3">
+                          {fix.status === "proposed" ? (
+                            <>
+                              <p className="text-sm">
+                                {t("rote.flow.fixProposed")}
+                              </p>
+                              <ul className="space-y-1 text-sm">
+                                {fix.changes.map((c, i) => (
+                                  <li key={i} className="font-mono text-xs">
+                                    {c.kind === "rename"
+                                      ? `${t("rote.flow.fixRename")} · ${c.input}: ${c.from} → ${c.to}`
+                                      : `${t("rote.flow.fixDate")} · ${c.input}.${c.column}: ${c.from.join(", ")} → ${c.to}`}
+                                  </li>
+                                ))}
+                              </ul>
+                              <p className="text-xs tabular-nums text-muted-foreground">
+                                0 {t("rote.flow.fixModelCalls")} ·{" "}
+                                {fix.durationMs.toFixed(1)} ms · {fix.rowCount}{" "}
+                                rows
+                              </p>
+                              <TablePreview id={fix.sourceOutputTableId} />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setRetrainForm({
+                                    inputs: next.inputs.map((b) => ({ ...b })),
+                                    output: fix.sourceOutputTableId,
+                                    source: fix.sourceOutputTableId,
+                                    params: "{}",
+                                  });
+                                  setRetrain(true);
+                                  document
+                                    .getElementById("step-1")
+                                    ?.scrollIntoView({ behavior: "smooth" });
+                                }}
+                              >
+                                {t("rote.flow.fixUse")}
+                              </Button>
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              {t("rote.flow.fixUnsupported")}: {fix.reason}
+                            </p>
+                          )}
+                        </div>
                       )}
                       {lastRun.status !== "succeeded" && (
                         <Button
