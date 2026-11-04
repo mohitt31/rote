@@ -62,6 +62,8 @@ function Stat({
 export default function HomeRoute() {
   const t = useT();
   const overview = useActionQuery("get-overview", {});
+  const restraint = useActionQuery("get-restraint-report", {});
+  const groups = restraint.data?.groups ?? [];
   const tasks = overview.data?.tasks ?? [];
   const active = tasks.filter((x) => x.activeVersion !== null).length;
   const replays = tasks.reduce((n, x) => n + x.replays, 0);
@@ -190,6 +192,74 @@ export default function HomeRoute() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="space-y-3" aria-labelledby="restraint">
+        <div>
+          <h2 id="restraint" className="font-medium">
+            {t("rote.restraint.title")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t("rote.restraint.body")}
+          </p>
+        </div>
+        {restraint.isLoading && (
+          <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        )}
+        {restraint.data && groups.length === 0 && (
+          <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            {t("rote.restraint.empty")}
+          </p>
+        )}
+        {groups.length > 0 && (
+          <ul className="space-y-2">
+            {groups.slice(0, 5).map((g) => (
+              <li key={g.signature} className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-medium">
+                    {g.steps} {t("rote.restraint.steps")} ·{" "}
+                    {g.agentRuns} {t("rote.restraint.runs")}
+                  </p>
+                  <p className="text-sm tabular-nums text-muted-foreground">
+                    {(g.tokensIn + g.tokensOut).toLocaleString("en-US")}{" "}
+                    {t("rote.restraint.tokens")} ·{" "}
+                    {(g.agentMs / 1000).toFixed(1)} s{" "}
+                    {t("rote.restraint.time")}
+                  </p>
+                </div>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">
+                  {Object.entries(g.actions)
+                    .map(([a, n]) => (n > 1 ? `${a} ×${n}` : a))
+                    .join(" · ")}
+                </p>
+                <p className="mt-2 text-sm">
+                  {g.coveredBy.length > 0 ? (
+                    <>
+                      {t("rote.restraint.covered")}{" "}
+                      {g.coveredBy.map((c, i) => (
+                        <Link
+                          key={c.taskId + c.version}
+                          className="underline"
+                          to={`/tasks?task=${encodeURIComponent(c.taskId)}`}
+                        >
+                          {i > 0 ? ", " : ""}
+                          {c.taskName} v{c.version}
+                        </Link>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {t("rote.restraint.crystallize")} ·{" "}
+                      <Link className="underline" to="/tasks">
+                        {t("rote.restraint.open")}
+                      </Link>
+                    </>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

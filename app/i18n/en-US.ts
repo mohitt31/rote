@@ -5,6 +5,18 @@ const messages = {
         "Public demo: sample data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
       nextReset: "Next reset at",
     },
+    restraint: {
+      title: "Restraint report",
+      body: "Agent runs that used Rote's step actions, grouped by the steps they called. Totals come from completed framework traces; cost is list-price metadata, not a bill.",
+      empty: "No traced agent runs with Rote steps yet.",
+      steps: "steps",
+      runs: "agent runs",
+      tokens: "model tokens",
+      time: "agent time",
+      covered: "Covered by",
+      crystallize: "Repeated agent work: teach it once as a task",
+      open: "Open tasks",
+    },
     home: {
       title: "Teach it once. Never pay for it again.",
       body: "Rote turns a repetitive agent data job into a verified, versioned pipeline. It replays every week with zero model calls and stops instead of guessing when the input changes.",
