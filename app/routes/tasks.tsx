@@ -76,6 +76,8 @@ export function meta() {
   return [{ title: "Rote · Tasks" }];
 }
 
+type SampleKind = "payouts" | "vendors" | "cdsco";
+
 export default function Tasks() {
   const t = useT(),
     [search, setSearch] = useSearchParams(),
@@ -228,12 +230,14 @@ export default function Tasks() {
     );
   }, [activeNames]);
 
-  const prepareSample = (kind: "payouts" | "vendors") =>
+  const prepareSample = (kind: SampleKind) =>
     perform(`sample-${kind}`, async () => {
       const result =
         kind === "payouts"
           ? await callAction("prepare-payout-sample", {})
-          : await callAction("prepare-vendor-sample", {});
+          : kind === "cdsco"
+            ? await callAction("prepare-cdsco-task", {})
+            : await callAction("prepare-vendor-sample", {});
       sessionStorage.setItem(
         `rote-demo:${result.taskId}`,
         JSON.stringify(result),
@@ -277,7 +281,7 @@ export default function Tasks() {
               <IconPlus className="size-4" />
             </Button>
           </form>
-          {(["payouts", "vendors"] as const).map((kind) => (
+          {(["cdsco", "payouts", "vendors"] as const).map((kind) => (
             <Button
               key={kind}
               variant="ghost"
@@ -290,7 +294,9 @@ export default function Tasks() {
                 ? t("rote.working")
                 : kind === "payouts"
                   ? t("rote.prepareSample")
-                  : t("rote.flow.prepareVendors")}
+                  : kind === "cdsco"
+                    ? t("rote.flow.prepareCdsco")
+                    : t("rote.flow.prepareVendors")}
             </Button>
           ))}
         </div>
@@ -1300,7 +1306,7 @@ function EmptyState({
   onSample,
   busy,
 }: {
-  onSample: (kind: "payouts" | "vendors") => void;
+  onSample: (kind: SampleKind) => void;
   busy: boolean;
 }) {
   const t = useT();
@@ -1344,6 +1350,15 @@ function EmptyState({
         >
           <IconFlask className="size-4" />
           {t("rote.flow.prepareVendors")}
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          disabled={busy}
+          onClick={() => onSample("cdsco")}
+        >
+          <IconFlask className="size-4" />
+          {t("rote.flow.prepareCdsco")}
         </Button>
       </div>
     </div>

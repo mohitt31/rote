@@ -97,6 +97,7 @@ const messages = {
         "New format started. Approve its holdout, then crystallize, verify and approve the new version.",
       reteachTitle: "Input format changed?",
       prepareVendors: "Prepare sample vendor cleanup",
+      prepareCdsco: "Real data: CDSCO drug alerts (Jan–Mar 2026)",
       askAgent: "Ask the agent to handle this week",
       suggestFix: "Suggest a fix (no AI)",
       fixProposed:
