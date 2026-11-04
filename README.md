@@ -2,48 +2,32 @@
 
 **Teach it once. Never pay for it again.**
 
-Rote turns repeated agent-led data jobs into verified, versioned deterministic pipelines that replay with zero model calls. Automated end-to-end tests use a mocked agent; the live model-backed teaching run remains pending.
+Rote turns a data job an AI agent keeps repeating into a verified, versioned pipeline that replays with zero model calls, and stops instead of guessing when the input changes. Built on [Agent-Native](https://agent-native.com) for the Builder.io Agent-Native Hackathon.
 
-## Current status (4 November 2026)
+**Live demo:** https://rote-demo.netlify.app (no sign-in; shared data reset hourly)
 
-- **Real model run, verified.** On Mohit's laptop, Gemini 3.1 Flash-Lite (free tier) carried out the week-1 payout reconciliation through Rote's step actions in one guided chat run: 11 recorded step calls, all successful, 12 model calls, **240,781 input + 1,255 output tokens, 42.1 s** (framework trace `run-1793769080450-xsdz0t`). Its output (8 rows) matched the independently generated reference row for row. The prompt spelled out the steps, so this is a *guided* real-model execution, not reconciliation logic the model discovered on its own. The framework's list-price estimate for that run was US$0.0199; the free tier did not bill anything.
-- **Full loop accepted live** (`docs/live-acceptance-2026-11-04.md`): Mohit approved the real run's training reference and an independent holdout, verified and promoted version 1 by its exact hash, and replayed unseen week 3: **19.6 ms, 0 model tokens**, output matching the independent reference. Same job on the same laptop: agent 42.1 s and 242,036 tokens; Rote replay 19.6 ms and 0 tokens.
-- `/tasks`: a guided five-step flow — approve a training reference and an unseen holdout → crystallize the recorded steps → verify (comparator self-check, then every frozen reference) → approve the exact version hash → replay next week with zero model calls.
-- **Suggest a fix (no AI).** When a run stops on drift, `propose-drift-fix` explains renamed columns (paired by value kind and name) and changed date formats (a single format that parses every value) without a model, refuses value changes and ambiguous cases, and re-runs the recorded steps so the repaired week can be approved as the next format version. Live on the laptop: drift stopped in 2.3 ms, the fix was proposed in 34 ms with 0 model calls, and its output matched the new-format reference.
-- **Restraint report** on `/home`: agent runs that used Rote steps, grouped by the steps they called, with token and time totals from completed framework traces, and whether an approved pipeline already covers them. On the laptop it shows the 11-step reconciliation done twice by the agent (445,142 tokens, 94.5 s in total), now covered by the promoted v1.
-- Drift or a failed recorded validation stops a run without output. A changed input format can be taught as a new version in the same task (v1 keeps running until v2 is verified and approved; the UI shows a step diff).
-- Two sample tasks with independent references, plus a "bank changes its export" scenario (all synthetic, labelled as sample data). Approved holdout references are hidden from agent, MCP, A2A, CLI and automation callers.
-- `run-task` works from the UI, the CLI and MCP. A public demo mode (`ROTE_PUBLIC_DEMO`) turns the agent off server-side and resets shared data hourly.
-- **Not yet done:** deployment, Clips video and Slides. Automated *model* repair and scheduling are not implemented; deterministic repair covers renames and date formats only.
+## The numbers (recorded, not estimated)
 
-## Local setup
+| Same job, same laptop (4 Nov 2026) | Time | Model tokens | Model calls |
+| --- | --- | --- | --- |
+| Agent does the payout reconciliation (Gemini 3.1 Flash-Lite, guided) | 42.1 s | 242,036 | 12 |
+| Rote replays the next week from the approved pipeline | 19.6 ms | 0 | 0 |
+| Rote explains and repairs a changed bank export | 34.3 ms | 0 | 0 |
 
-From this checkout, run:
+Every output matched an independently generated reference. One run each; see `docs/live-acceptance-2026-11-04.md` and `benchmark/live-acceptance.json`.
 
-```sh
-cd ~/rote
-sh scripts/bootstrap
-cp -n .env.example .env
-# Edit .env yourself: set GOOGLE_GENERATIVE_AI_API_KEY using a billing-disabled project.
-./scripts/local pnpm dev --host 127.0.0.1
-```
+**Real public data:** India CDSCO "Not of Standard Quality" drug alerts. Taught on January 2026 (218 rows), verified on February (217), March (190 rows) replayed with 0 model tokens and matching an independent reference. See `docs/data-cdsco.md`.
 
-Open the printed local URL, use **Continue as local dev**, and ask: **Call the hello action for Mohit.** No account or password is needed for the local development session. The expected action result is `Hello, Mohit!`; an actual model reply still requires a working key and available model quota.
+## Try it in two minutes
 
-The configured model is `gemini-3.1-flash-lite`, present in the installed framework's model catalog. Its availability and free quota must be confirmed on the user's project before inference. Change `AGENT_MODEL` in `.env` or select a model in Settings. For Groq, set `GROQ_API_KEY`, `AGENT_ENGINE=ai-sdk:groq`, and an available free-tier `AGENT_MODEL`. Never assume quotas or prices from this README.
+1. Open the demo and click **Start the guided demo**.
+2. Approve the reference and the unseen holdout, then **Crystallize**, **Verify** (Rote first proves its comparator rejects a changed value and a dropped row) and **Approve and activate** the exact version hash.
+3. **Run approved pipeline**: next week replays with "0 model tokens".
+4. **Teach the new format → bank changes its export → Run**: the run stops on drift. **Suggest a fix (no AI)** explains the renamed column and the new date format without a model.
+5. Back on Home, **Or ask the agent → Run this week's payouts**: the agent checks for an approved pipeline and calls `run-task` instead of redoing the job.
+6. **Recurring tasks → Real data: CDSCO drug alerts** runs the same loop on real data.
 
-Do not set `DATABASE_URL` for local setup: PGlite stores development data under ignored `data/`. Keep `AUTH_DISABLED` unset. Hosted deployments and production migrations require explicit approval.
-
-Useful commands:
-
-```sh
-./scripts/local pnpm typecheck
-./scripts/local pnpm test
-./scripts/local pnpm agent-native:doctor
-./scripts/local pnpm action hello --name Mohit
-```
-
-See `docs/day-4.md` for the latest progress, `docs/day-3.md` for the core loop, and `docs/day-2.md` for primitive/import details. `docs/progress-2026-10-31.md` retains the Day 1 record.
+The demo agent runs on Gemini's free tier with a shared limit of 8 requests per hour; Google's free models are sometimes slow or briefly unavailable. Everything except the chat runs without a model.
 
 ## How it works
 
@@ -55,46 +39,74 @@ flowchart LR
   D --> E[Human approves exact version hash]
   E --> F[Zero-model replay every week]
   F --> G{Drift or failed validation?}
-  G -->|Yes| H[Stop, no output; hand week to agent]
+  G -->|Yes| H[Stop, no output]
+  H --> I[Suggest a fix without AI, or hand the week to the agent]
+  I --> B
 ```
 
-The verifier and reference examples are outside the editable surface of any pipeline change. Pipelines contain allowlisted step definitions, not generated executable code. Numeric tolerance must be declared by the task.
+- The agent does the job with 15 bounded table actions (select, rename, parse date/number, normalize, regex extract, map values, filter, dedupe, join, group/aggregate, sort, compute column, split, validate). Every call is recorded with its inputs and outputs.
+- Crystallizing extracts an allowlisted step DAG from that recorded lineage. A pipeline is data, not generated code. Its canonical hash binds it.
+- Verification freezes the references and tolerances, self-tests the comparator, then replays the training example and an independent holdout. Approved holdout rows are hidden from agent, MCP, A2A and CLI callers.
+- `run-task` checks each input's schema fingerprint, replays, validates and persists the output with version attribution. Drift or a failed validation writes nothing.
+- **Restraint.** Before working, the agent calls `list-tasks` and uses `run-task` when an approved pipeline covers the job. On drift it calls `propose-drift-fix` first. The restraint report on Home shows which repeated agent work (from framework traces) is not covered by a pipeline yet.
 
-## Framework feature map
+## Agent-Native features used
 
-| Capability | Source | Status |
+| Capability | Where | Status |
 | --- | --- | --- |
-| Shared actions (UI + agent + CLI + MCP) | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus task lifecycle actions; tested |
-| CLI | `pnpm action run-task '{"taskId":…,"inputs":{…}}'` | Verified locally (set `AGENT_ORG_ID` to the workspace org) |
-| MCP | `mcpTool: true` on `run-task`, `list-tasks`, `get-task`, `list-tables` | Verified locally: `tools/list` + `tools/call run-task` with a token from `/mcp/connect` |
-| Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, drift hand-off in `app/routes/tasks.tsx` | Hand-off verified in the browser; real Gemini run completed 4 Nov |
-| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Real trace captured: 12 model calls, 11 tool calls, 240,781 input tokens, 42.1 s |
-| Approval and audit | `actions/approve-example.ts`, `actions/promote-pipeline.ts` (`needsApproval: true`) | Framework approval gates and audit |
-| Public demo mode | `server/rote/demo.ts`, `server/plugins/agent-chat.ts` (`prepareRequest`) | Verified locally: banner, sample flow, agent request refused with 403 |
-| Drift repair | `actions/propose-drift-fix.ts`, `server/rote/repair.ts` | Renames and date formats without a model; tested |
-| Restraint report | `actions/get-restraint-report.ts`, `server/rote/restraint.ts` | Reads step log + framework trace totals (read-only); tested |
-| Automations, evals | — | Planned; not claimed |
-| Clips and Slides | Agent-Native apps | Planned |
+| One action layer for UI, agent, CLI and MCP | `actions/`, `server/rote/steps.ts` | 15 step actions plus the task lifecycle; tested |
+| MCP | `mcpTool: true` on `run-task`, `list-tasks`, `get-task`, `list-tables` | `tools/call run-task` verified locally |
+| Agent chat with screen context and hand-off | `server/plugins/agent-chat.ts`, `app/routes/tasks.tsx`, `app/routes/home.tsx` | Live on the demo |
+| Human approval | `approve-example`, `promote-pipeline` (`needsApproval: true`) | Framework approval gates |
+| Observability | `server/rote/trace-evidence.ts`, `server/rote/restraint.ts` | Agent tokens, time and calls come from completed framework traces; replays record zero |
+| Durable background agent runs | Netlify background function (`A2A_SECRET`) | Verified on the demo |
+| Public demo mode | `server/rote/demo.ts`, `server/rote/demo-agent.ts` | Hourly reset; server-side hourly cap on agent turns |
 
-Agent-Native already provides stored Data Programs. Rote's distinction is verification of a constrained action pipeline against approved examples and an unseen holdout, with a validated comparator and measured replay.
+## Benchmarks
 
-## Benchmarks and data
-
-`./scripts/local pnpm benchmark` teaches each sample task once, replays 18 unseen weeks through the persisted `run-task` path (in-memory PGlite with the app's migrations) and checks every output against the generator's independent reference. Latest run (`benchmark/results.md`, sample data, cloud Xeon VM, 1 Nov 2026):
+`./scripts/local pnpm benchmark` teaches each synthetic sample task once, replays 18 unseen weeks through the persisted `run-task` path (in-memory PGlite with the app's migrations) and checks every output against the generator's independent reference. Latest run (`benchmark/results.json`, Apple M4, 3 Nov 2026):
 
 | Task | Unseen weeks correct | Replay median / p95 | Model tokens per replay | Drift cases stopped |
 | --- | --- | --- | --- | --- |
-| Batched payout reconciliation | 18/18 | 8.2 / 13.6 ms | 0 | 3/3 |
-| Vendor price-list cleanup | 18/18 | 5.6 / 7.6 ms | 0 | 3/3 |
+| Batched payout reconciliation | 18/18 | 2.7 / 3.5 ms | 0 | 3/3 |
+| Vendor price-list cleanup | 18/18 | 1.5 / 2.2 ms | 0 | 3/3 |
 
-Agent vs. Rote, measured once each on the same laptop (4 Nov): guided Gemini run 42.1 s and 242,036 tokens; promoted pipeline replay of the next week 19.6 ms and 0 tokens. One run each, so treat it as an example, not a distribution. The separate in-memory primitive benchmark (`benchmark/primitives.json`, Apple M4) measured 13.62 ms median for six steps on 10,000 rows. Payout and vendor data is synthetic and labelled as sample data. `scripts/fetch-cdsco.ts` fetches real CDSCO NSQ monthly lists with provenance, but has not been run yet.
+On the hosted demo (Netlify functions + Neon) the same replays take tens to about 140 ms because of database round trips.
+
+## Honest limits
+
+- The teaching run was **guided**: the prompt named the steps. The model executed them and wired the real table IDs; it did not discover the reconciliation logic itself.
+- CDSCO January steps were recorded by a script, not an agent run. Its references come from an independent plain-code implementation of the same written rules. Some published addresses have no comma after the company name, so those manufacturer names keep part of the address.
+- Deterministic repair covers renamed columns and changed date formats only; anything else stops for a person.
+- No scheduling yet.
+
+## Local setup
+
+```sh
+cd ~/rote
+sh scripts/bootstrap
+cp -n .env.example .env
+# Edit .env yourself: set GOOGLE_GENERATIVE_AI_API_KEY from a billing-disabled project.
+./scripts/local pnpm dev --host 127.0.0.1
+```
+
+Open the printed URL and use **Continue as local dev**. Local data lives in PGlite under the ignored `data/` folder; do not set `DATABASE_URL` locally. The configured model is `gemini-3.1-flash-lite`; check its free quota on your own project.
+
+```sh
+./scripts/local pnpm typecheck
+./scripts/local pnpm test
+./scripts/local pnpm agent-native:doctor
+./scripts/local pnpm benchmark
+```
+
+Deployment notes are in `docs/deploy.md`.
 
 ## Pre-existing work and attribution
 
-Started on 31 October 2026 from the MIT-licensed BuilderIO Agent-Native Chat template, version 0.222.2. Retained template code includes chat, authentication, navigation, settings, UI primitives, and migration setup. Third-party libraries are declared in `package.json`; exact resolutions are recorded in `pnpm-lock.yaml`. Major libraries include React, React Router, Vite, Nitro (via Core), Drizzle, PGlite, Zod, Vercel AI SDK providers, Tailwind, Radix, TanStack Query, and Vitest. Review dependency licenses before publication.
+Started on 31 October 2026 from the MIT-licensed Builder.io Agent-Native Chat template, version 0.222.2. Retained template code includes chat, authentication, navigation, settings, UI primitives and migration setup. Third-party libraries are declared in `package.json`; exact resolutions are in `pnpm-lock.yaml`. CDSCO data is public information published by the Government of India's CDSCO and is bundled with its source URL and SHA-256.
 
-New project work is built with AI coding assistants under Mohit's direction. Template instructions remain in `AGENTS.md`; the original product brief and permissions are in `docs/brief.md`.
+Built with AI coding assistants under Mohit's direction. The original product brief is in `docs/brief.md`; a Core bug found along the way is documented with a patch in `docs/upstream/`.
 
 ## Team
 
-Mohit Prajapati — solo builder (`mohitt31`).
+Mohit Prajapati, solo builder (`mohitt31`).
