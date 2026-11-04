@@ -10,6 +10,11 @@ NPM_CONFIG_PRODUCTION = "false"
 [context.production.environment]
 AGENT_NATIVE_HOSTED_HARNESS = "true"
 AGENT_NATIVE_DISABLE_KEEP_WARM_BACKGROUND = "1"
+# Judging window only (5-14 Nov 2026): ping the server function every 4 min so
+# Neon's free compute (suspends after 5 idle min) and the function stay warm.
+# ~6 CU-hours/day of the free plan's 100/month; remove after judging.
+AGENT_NATIVE_ENABLE_KEEP_WARM = "1"
+AGENT_NATIVE_KEEP_WARM_SCHEDULE = "*/4 * * * *"
 # Set BETTER_AUTH_TRUSTED_ORIGINS to this site's own URL in the Netlify UI.
 # Production release migrations own schema setup; request functions must skip
 # migration probes on every serverless invocation.
