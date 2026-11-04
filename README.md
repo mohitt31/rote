@@ -64,12 +64,12 @@ flowchart LR
 
 ## Benchmarks
 
-`./scripts/local pnpm benchmark` teaches each synthetic sample task once, replays 18 unseen weeks through the persisted `run-task` path (in-memory PGlite with the app's migrations) and checks every output against the generator's independent reference. Latest run (`benchmark/results.json`, Apple M4, 3 Nov 2026):
+`./scripts/local pnpm benchmark` teaches each synthetic sample task once, replays 18 unseen weeks through the persisted `run-task` path (in-memory PGlite with the app's migrations) and checks every output against the generator's independent reference. Latest run (`benchmark/results.json`, Apple M4, 5 Nov 2026 IST):
 
 | Task | Unseen weeks correct | Replay median / p95 | Model tokens per replay | Drift cases stopped |
 | --- | --- | --- | --- | --- |
-| Batched payout reconciliation | 18/18 | 2.7 / 3.5 ms | 0 | 3/3 |
-| Vendor price-list cleanup | 18/18 | 1.5 / 2.2 ms | 0 | 3/3 |
+| Batched payout reconciliation | 18/18 | 2.5 / 3.5 ms | 0 | 3/3 |
+| Vendor price-list cleanup | 18/18 | 1.6 / 2.1 ms | 0 | 3/3 |
 
 On the hosted demo (Netlify functions + Neon) the same replays take tens to about 140 ms because of database round trips.
 
