@@ -45,7 +45,7 @@ Started 31 Oct 2026 from the MIT-licensed Agent-Native Chat template (Core 0.222
 ## Links
 
 - Public demo: https://rote-demo.netlify.app
-- Repository: `[make public first, then paste URL]`
+- Repository: https://github.com/mohitt31/rote
 - Clips video: `[paste after recording]`
 
 ## Evidence

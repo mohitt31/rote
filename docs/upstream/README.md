@@ -1,4 +1,4 @@
-# Upstream fix found while building Rote (not submitted yet)
+# Upstream fix found while building Rote
 
 **Bug:** promoting a trace to an eval dataset fails on Postgres/PGlite.
 
@@ -27,5 +27,5 @@ await pg.query(
 Verified on 4 Nov 2026 with PGlite 0.5.x: the current SQL errors for both `"a"` and `null`; the
 cast version returns the expected rows for both.
 
-**Fix:** `agent-native-promote-trace-null-param.patch` (one-line SQL change plus a comment). The
-upstream test suite was not run locally. Opening an upstream issue or PR needs Mohit's approval.
+**Fix:** `agent-native-promote-trace-null-param.patch` (one-line SQL change plus a comment). Submitted as
+https://github.com/BuilderIO/agent-native/pull/8719 with a PGlite regression test; open as of 5 Nov 2026.
