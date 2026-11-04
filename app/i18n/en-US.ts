@@ -2,10 +2,10 @@ const messages = {
   rote: {
     demo: {
       banner:
-        "Public demo: sample data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
+        "Public demo: synthetic samples and public CDSCO data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
       nextReset: "Next reset at",
       bannerAgent:
-        "Public demo: sample data only, shared by every visitor and reset hourly. The agent runs on a free-tier model with a shared limit of {{limit}} requests per hour ({{left}} left); replays never call it.",
+        "Public demo: synthetic samples and public CDSCO data only, shared by every visitor and reset hourly. The agent runs on a free-tier model with a shared limit of {{limit}} requests per hour ({{left}} left); replays never call it.",
     },
     restraint: {
       title: "Restraint report",
