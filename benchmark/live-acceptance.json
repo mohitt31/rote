@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-04",
+  "machine": "Apple M4 laptop, local dev server, local PGlite",
+  "evidence": "docs/live-acceptance-2026-11-04.md",
+  "task": "Sample batched payout reconciliation (week 1 taught, week 3 replayed)",
+  "agent": {
+    "model": "Gemini 3.1 Flash-Lite",
+    "guided": true,
+    "durationMs": 42061,
+    "tokensIn": 240781,
+    "tokensOut": 1255,
+    "modelCalls": 12,
+    "toolCalls": 11,
+    "listPriceUsd": 0.0199,
+    "trace": "run-1793769080450-xsdz0t"
+  },
+  "replay": {
+    "durationMs": 19.6,
+    "tokens": 0,
+    "modelCalls": 0,
+    "matchesIndependentReference": true
+  },
+  "drift": {
+    "stopMs": 2.3,
+    "fixMs": 34.3,
+    "fixModelCalls": 0,
+    "fixMatchesIndependentReference": true
+  }
+}

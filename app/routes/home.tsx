@@ -11,7 +11,80 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import live from "../../benchmark/live-acceptance.json";
 import benchmark from "../../benchmark/results.json";
+
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+/** One recorded live run: the agent teaching the job vs. the approved replay. */
+function LiveComparison() {
+  const t = useT();
+  const agentTokens = live.agent.tokensIn + live.agent.tokensOut;
+  const speedup = Math.round(live.agent.durationMs / live.replay.durationMs);
+  const row = (
+    label: string,
+    time: string,
+    tokens: string,
+    calls: string,
+    accent?: boolean,
+  ) => (
+    <div
+      className={cn(
+        "grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl border p-4 sm:grid-cols-[1.4fr_1fr_1fr_1fr] sm:items-baseline",
+        accent && "border-emerald-600/30 bg-emerald-500/5",
+      )}
+    >
+      <p className="col-span-2 text-sm font-medium sm:col-span-1">{label}</p>
+      <p className="text-2xl font-semibold tabular-nums">{time}</p>
+      <p className="text-right text-sm tabular-nums text-muted-foreground sm:text-left">
+        {tokens} {t("rote.home.live.tokens")}
+      </p>
+      <p className="hidden text-sm tabular-nums text-muted-foreground sm:block">
+        {calls} {t("rote.home.live.calls")}
+      </p>
+    </div>
+  );
+  return (
+    <section className="space-y-3" aria-labelledby="live-run">
+      <div>
+        <h2 id="live-run" className="font-medium">
+          {t("rote.home.live.title")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("rote.home.live.body")}
+        </p>
+      </div>
+      <div className="space-y-2">
+        {row(
+          t("rote.home.live.agent"),
+          `${(live.agent.durationMs / 1000).toFixed(1)} s`,
+          fmt(agentTokens),
+          String(live.agent.modelCalls),
+        )}
+        {row(
+          t("rote.home.live.replay"),
+          `${live.replay.durationMs} ms`,
+          "0",
+          "0",
+          true,
+        )}
+        {row(
+          t("rote.home.live.fix"),
+          `${live.drift.fixMs} ms`,
+          "0",
+          "0",
+          true,
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {t("rote.home.live.note", {
+          speedup: fmt(speedup),
+          date: live.date,
+        })}
+      </p>
+    </section>
+  );
+}
 
 const TITLE = "Rote · Teach it once. Never pay for it again.";
 const DESCRIPTION =
@@ -90,6 +163,8 @@ export default function HomeRoute() {
           </Button>
         </div>
       </header>
+
+      <LiveComparison />
 
       <ol className="grid gap-3 md:grid-cols-3">
         {[

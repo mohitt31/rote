@@ -47,7 +47,17 @@ const messages = {
       medianP95: "Median / p95",
       tokens: "Tokens",
       honest:
-        "Sample data only. Agent-run token and time costs are not shown until a real traced model run is recorded.",
+        "Sample data, in-memory database. Replays only; the agent's cost for the same job is the recorded live run above.",
+      live: {
+        title: "Same job: agent vs. approved pipeline",
+        body: "One recorded live run of the sample payout reconciliation. The agent did the job once; a person approved it; Rote replayed the next week and repaired a changed bank export without a model.",
+        agent: "Agent teaches it (Gemini 3.1 Flash-Lite, guided)",
+        replay: "Rote replays next week",
+        fix: "Rote repairs a changed export",
+        tokens: "tokens",
+        calls: "model calls",
+        note: "Recorded {{date}} on an Apple M4 laptop, one run each; every output matched an independently generated reference. Replay is about {{speedup}}× faster. Trace totals from the framework; details in docs/live-acceptance-2026-11-04.md.",
+      },
     },
     flow: {
       addInput: "Add input",
