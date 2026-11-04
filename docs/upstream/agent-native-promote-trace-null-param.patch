@@ -1,0 +1,17 @@
+diff --git a/packages/core/src/observability/store.ts b/packages/core/src/observability/store.ts
+index 32f0a6ff..8aef860d 100644
+--- a/packages/core/src/observability/store.ts
++++ b/packages/core/src/observability/store.ts
+@@ -1772,8 +1772,11 @@ export async function getEvalDatasetByName(
+   return rowToDataset(rows[0] as any);
+ }
+ 
++// The second placeholder is only compared with NULL, so Postgres cannot infer
++// its type ("could not determine data type of parameter $2"). The cast keeps
++// the check valid on Postgres/PGlite and is a no-op on SQLite.
+ const PROMOTED_DATASET_OWNER =
+-  "(user_id = ? OR (? IS NULL AND user_id IS NULL))";
++  "(user_id = ? OR (CAST(? AS TEXT) IS NULL AND user_id IS NULL))";
+ 
+ async function selectPromotedEvalDatasetByKey(
+   idempotencyKey: string,
