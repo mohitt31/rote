@@ -4,16 +4,16 @@
 
 Rote turns repeated agent-led data jobs into verified, versioned deterministic pipelines that replay with zero model calls. Automated end-to-end tests use a mocked agent; the live model-backed teaching run remains pending.
 
-## Current status
+## Current status (4 November 2026)
 
-- Standalone Agent-Native app scaffolded from the Chat template (`@agent-native/core@0.222.2`), with a local Node 22.22.0 / pnpm bootstrap.
-- `/home`: overview of the loop, live per-task totals from recorded runs, and the measured benchmark.
-- `/tasks`: a guided five-step flow — approve a training reference and an unseen holdout → crystallize the recorded steps → verify (comparator self-check, then every frozen reference) → approve the exact version hash → replay next week with zero model calls.
-- Drift or a failed recorded validation stops a run without output. The stopped week can be handed to the agent chat, and a changed input format can be taught as a new version in the same task (v1 keeps running until v2 is verified and approved; the UI shows a step diff).
-- Two sample tasks with independent references, plus a "bank changes its export" scenario: batched payout reconciliation and vendor price-list cleanup (all synthetic, labelled as sample data).
-- Approved holdout references are hidden from agent, MCP, A2A, CLI and automation callers; only the signed-in app UI can read them.
-- `run-task` works from the UI, the CLI and MCP, all verified locally. A public demo mode (`ROTE_PUBLIC_DEMO`) turns the agent off server-side and resets shared data hourly.
-- **Not yet done:** a real model-backed teaching run (needs the user's Gemini key), so no agent token/cost numbers are claimed anywhere. Automated repair, scheduling, eval promotion, CDSCO data (fetch script ready, host blocked in the cloud build) and deployment are pending.
+- **Real model run, verified.** On Mohit's laptop, Gemini 3.1 Flash-Lite (free tier) carried out the week-1 payout reconciliation through Rote's step actions in one guided chat run: 11 recorded step calls, all successful, 12 model calls, **240,781 input + 1,255 output tokens, 42.1 s** (framework trace `run-1793769080450-xsdz0t`). Its output (8 rows) matched the independently generated reference row for row. The prompt spelled out the steps, so this is a *guided* real-model execution, not reconciliation logic the model discovered on its own. The framework's list-price estimate for that run was US$0.0199; the free tier did not bill anything.
+- `/tasks`: a guided five-step flow — approve a training reference and an unseen holdout → crystallize the recorded steps → verify (comparator self-check, then every frozen reference) → approve the exact version hash → replay next week with zero model calls. Human approval of the real run's training and holdout references is the next step.
+- **Suggest a fix (no AI).** When a run stops on drift, `propose-drift-fix` explains renamed columns (paired by value kind and name) and changed date formats (a single format that parses every value) without a model, refuses value changes and ambiguous cases, and re-runs the recorded steps so the repaired week can be approved as the next format version.
+- **Restraint report** on `/home`: agent runs that used Rote steps, grouped by the steps they called, with token and time totals from completed framework traces, and whether an approved pipeline already covers them. On the laptop it currently shows the 11-step reconciliation done twice by the agent: 445,142 tokens and 94.5 s in total.
+- Drift or a failed recorded validation stops a run without output. A changed input format can be taught as a new version in the same task (v1 keeps running until v2 is verified and approved; the UI shows a step diff).
+- Two sample tasks with independent references, plus a "bank changes its export" scenario (all synthetic, labelled as sample data). Approved holdout references are hidden from agent, MCP, A2A, CLI and automation callers.
+- `run-task` works from the UI, the CLI and MCP. A public demo mode (`ROTE_PUBLIC_DEMO`) turns the agent off server-side and resets shared data hourly.
+- **Not yet done:** human approval and promotion of the real run, deployment, Clips video and Slides. Automated *model* repair and scheduling are not implemented; deterministic repair covers renames and date formats only.
 
 ## Local setup
 
@@ -66,10 +66,12 @@ The verifier and reference examples are outside the editable surface of any pipe
 | Shared actions (UI + agent + CLI + MCP) | `actions/`, `server/rote/steps.ts` | Fifteen primitives plus task lifecycle actions; tested |
 | CLI | `pnpm action run-task '{"taskId":…,"inputs":{…}}'` | Verified locally (set `AGENT_ORG_ID` to the workspace org) |
 | MCP | `mcpTool: true` on `run-task`, `list-tasks`, `get-task`, `list-tables` | Verified locally: `tools/list` + `tools/call run-task` with a token from `/mcp/connect` |
-| Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, drift hand-off in `app/routes/tasks.tsx` | Hand-off verified in the browser; model answer pending a key |
-| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Capture configured; real model trace pending |
+| Chat and context | `server/plugins/agent-chat.ts`, `actions/view-screen.ts`, drift hand-off in `app/routes/tasks.tsx` | Hand-off verified in the browser; real Gemini run completed 4 Nov |
+| Observability | `server/plugins/rote-config.ts`, `server/rote/trace-evidence.ts` | Real trace captured: 12 model calls, 11 tool calls, 240,781 input tokens, 42.1 s |
 | Approval and audit | `actions/approve-example.ts`, `actions/promote-pipeline.ts` (`needsApproval: true`) | Framework approval gates and audit |
 | Public demo mode | `server/rote/demo.ts`, `server/plugins/agent-chat.ts` (`prepareRequest`) | Verified locally: banner, sample flow, agent request refused with 403 |
+| Drift repair | `actions/propose-drift-fix.ts`, `server/rote/repair.ts` | Renames and date formats without a model; tested |
+| Restraint report | `actions/get-restraint-report.ts`, `server/rote/restraint.ts` | Reads step log + framework trace totals (read-only); tested |
 | Automations, evals | — | Planned; not claimed |
 | Clips and Slides | Agent-Native apps | Planned |
 
@@ -84,7 +86,7 @@ Agent-Native already provides stored Data Programs. Rote's distinction is verifi
 | Batched payout reconciliation | 18/18 | 8.2 / 13.6 ms | 0 | 3/3 |
 | Vendor price-list cleanup | 18/18 | 5.6 / 7.6 ms | 0 | 3/3 |
 
-Agent-only runs have **not** been measured; that comparison stays empty until a real traced model run exists. The separate in-memory primitive benchmark (`benchmark/primitives.json`, Apple M4) measured 13.62 ms median for six steps on 10,000 rows. Payout and vendor data is synthetic and labelled as sample data. `scripts/fetch-cdsco.ts` fetches real CDSCO NSQ monthly lists with provenance, but has not been run yet.
+One real traced agent run exists (4 Nov, guided, 42.1 s, 242,036 tokens); the replay of the same job after promotion is pending human approval, so no side-by-side number is claimed yet. The separate in-memory primitive benchmark (`benchmark/primitives.json`, Apple M4) measured 13.62 ms median for six steps on 10,000 rows. Payout and vendor data is synthetic and labelled as sample data. `scripts/fetch-cdsco.ts` fetches real CDSCO NSQ monthly lists with provenance, but has not been run yet.
 
 ## Pre-existing work and attribution
 
