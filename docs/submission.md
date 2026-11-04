@@ -53,7 +53,7 @@ Started 31 Oct 2026 from the MIT-licensed Agent-Native Chat template (Core 0.222
 | Claim | Source |
 | --- | --- |
 | 42.1 s, 242,036 tokens, 12 model calls; 19.6 ms / 0 tokens replay; 2.3 ms drift stop; 34.3 ms fix | `docs/live-acceptance-2026-11-04.md`, `benchmark/live-acceptance.json` |
-| 18/18 unseen weeks per sample task, median 2.7 ms and 1.5 ms, 3/3 drift cases stopped | `benchmark/results.json` (Apple M4, in-memory database) |
+| 18/18 unseen weeks per sample task, median 2.5 ms and 1.6 ms, 3/3 drift cases stopped | `benchmark/results.json` (Apple M4, in-memory database) |
 | CDSCO 218/217/190 rows; March replay matches the independent reference | `tests/cdsco.test.ts`, `docs/data-cdsco.md`; live demo run: 0 tokens, 138.2 ms |
 | Demo agent used `run-task` instead of redoing the job | live demo chat, 4 Nov 2026: succeeded, ~110 ms, 0 tokens |
 
