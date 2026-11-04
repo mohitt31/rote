@@ -789,7 +789,7 @@ export default function Tasks() {
                           className="gap-2"
                           onClick={() =>
                             sendToAgentChat({
-                              message: `This week's input stopped the approved "${data.task.name}" pipeline: ${lastRun.message}. Inspect the input tables, then redo the job with the Rote step actions so every step is recorded. Do not change the approved pipeline, frozen references or tolerances. Finish by telling me which output table to review.`,
+                              message: `This week's input stopped the approved "${data.task.name}" pipeline: ${lastRun.message}. First call propose-drift-fix with the task ID and these inputs; it explains renamed columns and changed date formats without a model. If it proposes a fix, report the changes and its output table. Only if it is unsupported, inspect the input tables and redo the job with the Rote step actions so every step is recorded. Do not change the approved pipeline, frozen references or tolerances. Finish by telling me which output table to review.`,
                               context: JSON.stringify({
                                 taskId: id,
                                 pipelineVersion: view.active?.version,

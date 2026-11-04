@@ -4,6 +4,8 @@ const messages = {
       banner:
         "Public demo: sample data only, shared by every visitor and reset hourly. The agent is turned off, so every run here costs $0.",
       nextReset: "Next reset at",
+      bannerAgent:
+        "Public demo: sample data only, shared by every visitor and reset hourly. The agent runs on a free-tier model with a shared limit of {{limit}} requests per hour ({{left}} left); replays never call it.",
     },
     restraint: {
       title: "Restraint report",
@@ -48,6 +50,28 @@ const messages = {
       tokens: "Tokens",
       honest:
         "Sample data, in-memory database. Replays only; the agent's cost for the same job is the recorded live run above.",
+      start: {
+        title: "Try it in one minute",
+        s1: "Start the demo: Rote prepares a sample payout reconciliation that has already been taught once.",
+        s2: "Approve the reference and an unseen holdout, then crystallize, verify and approve the exact version.",
+        s3: "Run next week with zero model calls, then change the bank's export format and watch Rote stop and repair it without AI.",
+        button: "Start the guided demo",
+        busy: "Preparing sample data…",
+      },
+      ask: {
+        title: "Or ask the agent",
+        off: "The agent is turned off on this deployment. Everything here runs with zero model calls.",
+        note: "The agent checks for an approved pipeline before doing work itself, so these cost a few small model calls, not a full job.",
+        run: "Run this week's payouts with the approved pipeline",
+        runPrompt:
+          "Run this week's payout reconciliation. Check list-tasks first: if an approved pipeline covers it, use run-task with the latest week's tables instead of doing the job yourself, and tell me the status, time and model tokens it reported.",
+        drift: "The bank changed its export format. Handle it.",
+        driftPrompt:
+          "The bank changed its export format this week. Run the approved payout pipeline on the newest bank and payouts tables; if it stops on drift, call propose-drift-fix with the same inputs and tell me exactly what changed and which output table I should review.",
+        restraint: "Which repeated agent work should become a pipeline?",
+        restraintPrompt:
+          "Call get-restraint-report and tell me which repeated agent jobs are not covered by an approved pipeline yet, with the runs, tokens and time it reports. Do not estimate anything it does not report.",
+      },
       live: {
         title: "Same job: agent vs. approved pipeline",
         body: "One recorded live run of the sample payout reconciliation. The agent did the job once; a person approved it; Rote replayed the next week and repaired a changed bank export without a model.",

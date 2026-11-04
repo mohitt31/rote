@@ -26,10 +26,12 @@ Create two Netlify sites from the GitHub repository (build settings come from `n
 | `BETTER_AUTH_SECRET` | output of `openssl rand -hex 32` | a different `openssl rand -hex 32` |
 | `BETTER_AUTH_URL` | the site URL | the site URL |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | the site URL | the site URL |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | key from a billing-disabled project | **do not set** |
-| `AGENT_ENGINE` / `AGENT_MODEL` | as in `.env.example` | not needed |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | key from a billing-disabled project | only with `ROTE_DEMO_AGENT=true`, and only a key from a billing-disabled free-tier project |
+| `AGENT_ENGINE` / `AGENT_MODEL` | as in `.env.example` | `ai-sdk:google` / `gemini-3.1-flash-lite` when the demo agent is on |
 | `AUTH_DISABLED` | not set | `true` |
 | `ROTE_PUBLIC_DEMO` | not set | `true` |
+| `ROTE_DEMO_AGENT` | not set | `true` to let visitors use the agent on the server's free-tier key (billing disabled), with a shared hourly cap; leave unset to keep the agent off |
+| `ROTE_DEMO_AGENT_TURNS_PER_HOUR` | not set | optional cap, default 8 user-started turns per hour (1–100) |
 | `AGENT_NATIVE_CONFIG_RUNTIME_AUTH_ENABLED` | not set | `false` (set for build and runtime; without it the framework shows an "Authentication is disabled in production" configuration notice to every visitor) |
 
 `netlify.toml` no longer carries the template's analytics IDs or its trusted origins; set the trusted origin per site.

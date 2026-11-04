@@ -17,7 +17,12 @@ export function DemoBanner() {
       role="note"
       className="border-b bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-900 dark:text-amber-200"
     >
-      {t("rote.demo.banner")}
+      {status.data.agent
+        ? t("rote.demo.bannerAgent", {
+            limit: status.data.agent.turnsPerHour,
+            left: status.data.agent.turnsLeft,
+          })
+        : t("rote.demo.banner")}
       {next ? ` ${t("rote.demo.nextReset")} ${next}.` : ""}
     </div>
   );

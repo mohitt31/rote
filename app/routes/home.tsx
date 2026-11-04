@@ -1,12 +1,15 @@
-import { useActionQuery } from "@agent-native/core/client/hooks";
+import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
+import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
 import {
   IconArrowRight,
+  IconMessageCircle,
   IconPlayerPlay,
   IconShieldCheck,
   IconSparkles,
 } from "@tabler/icons-react";
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +18,86 @@ import live from "../../benchmark/live-acceptance.json";
 import benchmark from "../../benchmark/results.json";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+
+/** One click to a prepared sample task, plus agent prompts that show restraint. */
+function StartHere() {
+  const t = useT();
+  const navigate = useNavigate();
+  const demo = useActionQuery("get-demo-status", {});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const start = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await callAction("prepare-payout-sample", {});
+      try {
+        sessionStorage.setItem(
+          `rote-demo:${result.taskId}`,
+          JSON.stringify(result),
+        );
+      } catch {
+        // Storage can be unavailable; the Tasks screen still loads the task.
+      }
+      navigate(`/tasks?task=${encodeURIComponent(result.taskId)}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("rote.loadError"));
+      setBusy(false);
+    }
+  };
+  const agentOff = demo.data?.publicDemo && !demo.data.agent;
+  const ask = (message: string) =>
+    sendToAgentChat({ message, submit: false, openSidebar: true });
+  return (
+    <section
+      aria-labelledby="start-here"
+      className="grid gap-4 rounded-2xl border bg-muted/30 p-5 md:grid-cols-[1.1fr_1fr]"
+    >
+      <div className="space-y-3">
+        <h2 id="start-here" className="text-lg font-semibold">
+          {t("rote.home.start.title")}
+        </h2>
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+          <li>{t("rote.home.start.s1")}</li>
+          <li>{t("rote.home.start.s2")}</li>
+          <li>{t("rote.home.start.s3")}</li>
+        </ol>
+        <Button className="gap-2" onClick={start} disabled={busy}>
+          <IconPlayerPlay className="size-4" />
+          {busy ? t("rote.home.start.busy") : t("rote.home.start.button")}
+        </Button>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">{t("rote.home.ask.title")}</p>
+        {agentOff ? (
+          <p className="text-sm text-muted-foreground">{t("rote.home.ask.off")}</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {(["run", "drift", "restraint"] as const).map((k) => (
+              <Button
+                key={k}
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal py-2 text-left"
+                onClick={() => ask(t(`rote.home.ask.${k}Prompt`))}
+              >
+                <IconMessageCircle className="size-4 shrink-0" />
+                {t(`rote.home.ask.${k}`)}
+              </Button>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              {t("rote.home.ask.note")}
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 /** One recorded live run: the agent teaching the job vs. the approved replay. */
 function LiveComparison() {
@@ -163,6 +246,8 @@ export default function HomeRoute() {
           </Button>
         </div>
       </header>
+
+      <StartHere />
 
       <LiveComparison />
 

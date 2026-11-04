@@ -60,7 +60,14 @@ export async function maybeResetDemo(scope: Scope, now = Date.now()) {
 }
 
 export async function demoStatus(scope: Scope, now = Date.now()) {
-  if (!isPublicDemo()) return { publicDemo: false as const, nextResetAt: null };
+  if (!isPublicDemo())
+    return {
+      publicDemo: false as const,
+      nextResetAt: null,
+      agent: null,
+    };
+  const { demoAgentEnabled, demoAgentRemaining, demoAgentTurnsPerHour } =
+    await import("./demo-agent.js");
   const id = `demo-reset:${scope.ownerEmail}:${scope.orgId ?? ""}`;
   const [marker] = await getDb()
     .select()
@@ -71,5 +78,11 @@ export async function demoStatus(scope: Scope, now = Date.now()) {
   return {
     publicDemo: true as const,
     nextResetAt: new Date(last + DEMO_RESET_MS).toISOString(),
+    agent: demoAgentEnabled()
+      ? {
+          turnsLeft: await demoAgentRemaining(scope.ownerEmail, now),
+          turnsPerHour: demoAgentTurnsPerHour(),
+        }
+      : null,
   };
 }

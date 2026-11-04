@@ -6,6 +6,7 @@ import {
 import { createError } from "h3";
 
 import actionsRegistry from "../../.generated/actions-registry.js";
+import { demoAgentEnabled, takeDemoAgentTurn } from "../rote/demo-agent.js";
 import { isPublicDemo } from "../rote/demo.js";
 
 // Step actions are preloaded so a small model can do a table job without an
@@ -45,15 +46,25 @@ export default createAgentChatPlugin({
   appId: "rote",
   actions: loadActionsFromStaticRegistry(actionsRegistry),
   mcp: { connectorCatalog: [], appApprovalPage: true },
-  // Public demo: no model calls at all. The refusal happens server-side before
-  // any inference, so the demo costs $0 regardless of client behaviour.
+  // Public demo: the agent is off unless ROTE_DEMO_AGENT=true, and then a hard
+  // shared hourly cap on user-started turns is enforced server-side before any
+  // inference. MCP stays off in the demo either way.
   disableMcp: isPublicDemo(),
-  prepareRequest: async () => {
-    if (isPublicDemo())
+  prepareRequest: async (details) => {
+    if (!isPublicDemo()) return undefined;
+    if (!demoAgentEnabled())
       throw createError({
         statusCode: 403,
         statusMessage:
           "The agent is turned off in the public demo. Every pipeline here runs with zero model calls.",
+      });
+    if (details.internalContinuation || details.isBackgroundWorker)
+      return undefined;
+    const turn = await takeDemoAgentTurn(details.ownerEmail ?? "anonymous");
+    if (!turn.ok)
+      throw createError({
+        statusCode: 429,
+        statusMessage: `The shared demo agent has used its ${turn.limit} turns for this hour. Everything else here still works with zero model calls; the agent is available again next hour.`,
       });
     return undefined;
   },
