@@ -105,7 +105,7 @@ Deployment notes are in `docs/deploy.md`.
 
 Started on 31 October 2026 from the MIT-licensed Builder.io Agent-Native Chat template, version 0.222.2. Retained template code includes chat, authentication, navigation, settings, UI primitives and migration setup. Third-party libraries are declared in `package.json`; exact resolutions are in `pnpm-lock.yaml`. CDSCO data is public information published by the Government of India's CDSCO and is bundled with its source URL and SHA-256.
 
-Built with AI coding assistants under Mohit's direction. The original product brief is in `docs/brief.md`; a Core bug found along the way is documented with a patch in `docs/upstream/`.
+Built with AI coding assistants under Mohit's direction. A Core bug found along the way is documented with a patch in `docs/upstream/`.
 
 ## Team
 

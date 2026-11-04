@@ -34,7 +34,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 ## Rote project rules
 
-- Read `docs/brief.md` for the product scope and Mohit's authorization boundaries. Work only inside this checkout. Never print or commit secrets. Do not deploy, push, create a public repository, open upstream issues/PRs, or use paid services without Mohit's approval.
+- Work only inside this checkout. Never print or commit secrets. Do not deploy, push, create a public repository, open upstream issues/PRs, or use paid services without Mohit's approval.
 - Talk to Mohit in concise Hinglish; write code, docs, and submission material in English.
 - Use `./scripts/local pnpm ...` for the project-local runtime. Core stays pinned at 0.222.2 unless a blocking upgrade is justified.
 - The deterministic approval/verification/replay implementation is present. Live model acceptance, automated repair, fallback and scheduling remain pending. Never fabricate benchmark data or describe planned behavior as working.

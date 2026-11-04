@@ -5,7 +5,7 @@ Recorded on Mohit's laptop (Apple M4, local dev server, local PGlite, Gemini 3.1
 ## 1. Real model teaching run (guided)
 
 - Chat thread `chat-c36adb16-0a37-4a84-8cab-2a3fccb03f6f`, framework trace `run-1793769080450-xsdz0t`.
-- The prompt named the input table IDs and spelled out every step and parameter (`docs/CLAUDE-HANDOFF.md` recipe). This is a **guided** real-model execution: the model called the tools and wired the real output IDs between steps; it did not discover the reconciliation logic itself.
+- The prompt named the input table IDs and spelled out every step and parameter (a written recipe). This is a **guided** real-model execution: the model called the tools and wired the real output IDs between steps; it did not discover the reconciliation logic itself.
 - Trace totals: 12 model calls, 11 tool calls (11 successful, 0 failed), **240,781 input + 1,255 output tokens**, **42,061 ms**. Framework list-price estimate US$0.0199; the free tier billed nothing.
 - Output `2f9f0c1a-00a4-40dd-bae7-58c257015b30`: 8 rows, columns `settlement_id, net_cents, amount_minor, transaction_count, delta_cents`. It matched the independently generated week-1 reference `5197cb41-…` row for row (sorted multiset comparison).
 - An earlier attempt on 1 November (`chat-b2d9d6f0-…`, 52.4 s, 203,106 tokens) produced the right numbers but renamed `amount_minor` to `amount_minor_parsed` by setting `newColumn`, so it did not match the reference and was **not** used. The new prompt forbids `newColumn` on parse steps.
