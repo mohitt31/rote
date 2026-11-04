@@ -43,6 +43,19 @@ const INITIAL_TOOL_NAMES = [
   "ask-question",
 ];
 
+const DEMO_TOOL_NAMES = [
+  "view-screen",
+  "navigate",
+  "list-tasks",
+  "get-task",
+  "list-tables",
+  "preview-table",
+  "run-task",
+  "propose-drift-fix",
+  "prepare-format-change-sample",
+  "get-restraint-report",
+];
+
 export default createAgentChatPlugin({
   appId: "rote",
   actions: loadActionsFromStaticRegistry(actionsRegistry),
@@ -69,7 +82,11 @@ export default createAgentChatPlugin({
       });
     return undefined;
   },
-  initialToolNames: INITIAL_TOOL_NAMES,
+  // The public demo's agent mostly answers restraint prompts (run, repair,
+  // report), so it preloads only those tools; the 15 step actions stay
+  // discoverable. Each preloaded tool schema is resent on every model call,
+  // and on the free model this roughly halves the per-call prompt.
+  initialToolNames: isPublicDemo() ? DEMO_TOOL_NAMES : INITIAL_TOOL_NAMES,
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
   systemPrompt: `You are Rote, a workbench for turning repetitive data jobs into verified deterministic pipelines.
 
