@@ -38,6 +38,9 @@ const list = (Array.isArray(months.json) ? months.json : [])
         ),
   )
   .filter(Boolean)
+  // The months endpoint returns bare names ("Jan"); the table endpoint
+  // expects "Jan-2026". Append the year unless it is already present.
+  .map((m) => (/\d{4}/.test(m) ? m : `${m}-${year}`))
   .slice(0, maxMonths);
 if (!list.length)
   throw Error(
