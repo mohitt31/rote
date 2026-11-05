@@ -30,6 +30,19 @@ const source = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("inline"),
+      filename: z
+        .string()
+        .min(1)
+        .max(200)
+        .regex(/\.(csv|xlsx)$/i, "Only .csv or .xlsx"),
+      // Base64 file bytes from the browser; ~1 MiB of file at most so the
+      // hosted demo can import a visitor's own small file without storage.
+      base64: z.string().min(1).max(1_400_000),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("attachment"),
       ref: z.string().min(1).max(ATTACHMENT_REF_MAX_CHARS),
     })
@@ -37,7 +50,7 @@ const source = z.discriminatedUnion("kind", [
 ]);
 export default defineAction({
   description:
-    "Import CSV/XLSX from an owned upload, scoped AttachmentRef, or explicitly synthetic sample dataset. Returns table metadata only.",
+    "Import CSV/XLSX from an owned upload, scoped AttachmentRef, a small inline file sent by the app UI (up to 1 MiB), or an explicitly synthetic sample dataset. Returns table metadata only. Agents should not build inline files from row data.",
   schema: z.object({ source }),
   outputSchema: summarySchema,
   errors,
@@ -56,6 +69,11 @@ export default defineAction({
             : payoutSample(source.week)[source.dataset],
         );
         name = `sample-${source.dataset}-week-${source.week}.csv`;
+      } else if (source.kind === "inline") {
+        data = Buffer.from(source.base64, "base64");
+        if (!data.length || data.length > 1024 * 1024)
+          throw new RoteError("Inline files must be between 1 byte and 1 MiB");
+        name = source.filename.replace(/[^\w.\- ]/g, "_");
       } else if (source.kind === "attachment") {
         const file = unwrapAttachment(
           await resolveAttachment(source.ref, scope),

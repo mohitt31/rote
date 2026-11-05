@@ -237,7 +237,7 @@ const messages = {
     import: "Import data",
     sampleDataset: "Sample dataset",
     importSample: "Import sample",
-    upload: "Upload CSV / XLSX (local, up to 5 MiB)",
+    upload: "Upload your own CSV / XLSX (up to 1 MiB; 5 MiB on a local server)",
     tables: "Your tables",
     loading: "Loading…",
     loadError: "Could not load tables. Retry or sign in again.",

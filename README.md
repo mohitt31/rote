@@ -26,6 +26,7 @@ Every output matched an independently generated reference. One run each; see `do
 4. **Teach the new format → bank changes its export → Run**: the run stops on drift. **Suggest a fix (no AI)** explains the renamed column and the new date format without a model.
 5. Back on Home, **Or ask the agent → Run this week's payouts**: the agent checks for an approved pipeline and calls `run-task` instead of redoing the job.
 6. **Recurring tasks → Real data: CDSCO drug alerts** runs the same loop on real data.
+7. **Data workbench → Upload your own CSV / XLSX** (up to 1 MiB on the demo) to try the table actions, or ask the agent to clean it.
 
 The demo agent runs on Gemini's free tier with a shared limit of 8 requests per hour; Google's free models are sometimes slow or briefly unavailable. Everything except the chat runs without a model.
 

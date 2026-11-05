@@ -11,7 +11,11 @@ import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { uploadRoteFile } from "@/lib/rote-upload";
+import {
+  fileToBase64,
+  INLINE_MAX_BYTES,
+  uploadRoteFile,
+} from "@/lib/rote-upload";
 import { runWorkbenchStep } from "@/lib/run-step";
 
 import { stepExamples } from "../../shared/rote/examples";
@@ -123,10 +127,21 @@ export default function Workbench() {
               const file = e.target.files?.[0];
               if (file)
                 void perform(async () => {
-                  const uploadId = await uploadRoteFile(file);
-                  const out = await importer.mutateAsync({
-                    source: { kind: "upload", uploadId },
-                  });
+                  const out =
+                    file.size <= INLINE_MAX_BYTES
+                      ? await importer.mutateAsync({
+                          source: {
+                            kind: "inline",
+                            filename: file.name,
+                            base64: await fileToBase64(file),
+                          },
+                        })
+                      : await importer.mutateAsync({
+                          source: {
+                            kind: "upload",
+                            uploadId: await uploadRoteFile(file),
+                          },
+                        });
                   setSearch({ table: out.outputTableId });
                   setNotice(t("rote.imported"));
                 });
