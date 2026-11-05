@@ -56,6 +56,7 @@ Started 31 Oct 2026 from the MIT-licensed Agent-Native Chat template (Core 0.222
 | 18/18 unseen weeks per sample task, median 2.5 ms and 1.6 ms, 3/3 drift cases stopped | `benchmark/results.json` (Apple M4, in-memory database) |
 | CDSCO 218/217/190 rows; March replay matches the independent reference | `tests/cdsco.test.ts`, `docs/data-cdsco.md`; live demo run: 0 tokens, 138.2 ms |
 | Demo agent used `run-task` instead of redoing the job | live demo chat, 4 Nov 2026: succeeded, ~110 ms, 0 tokens |
+| Demo agent, 5 Nov 2026 11:45 IST (Gemini 3.1 Flash-Lite, free tier) | "Run this week": one `run-task` call, whole turn 5 s. "Bank changed its export": `prepare-format-change-sample` → `run-task` (stopped on drift) → `propose-drift-fix`, reported the rename and date-format change, whole turn 7 s. The same prompts took 40 s+ or timed out late on 4 Nov when the free model was congested. |
 
 ---
 

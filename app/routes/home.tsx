@@ -73,7 +73,9 @@ function StartHere() {
             contextLabel: t("rote.home.ask.contextLabel"),
           }
         : {}),
-      submit: false,
+      // Submit directly: a prefill sent while the sidebar is still mounting
+      // was dropped on the first click, leaving an empty composer.
+      submit: true,
       openSidebar: true,
     });
   };
