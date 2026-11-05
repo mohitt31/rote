@@ -146,7 +146,7 @@ const messages = {
       modelTokens: "model tokens",
       newTaskPlaceholder: "New task name",
       notMeasured:
-        "Not measured here: this sample's steps were recorded by a script, so no token cost is claimed. The same job done by a real agent took 42.1 s and 242,036 tokens (see Home).",
+        "Not measured here: this sample's steps were recorded by a script, so no token cost is claimed. For scale: a real agent doing the payout reconciliation took 42.1 s and 242,036 tokens (see Home).",
       progress: "Task progress",
       reference: "Reviewed reference output",
       removeInput: "Remove input",
