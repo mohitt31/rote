@@ -135,27 +135,47 @@ function LiveComparison() {
   const t = useT();
   const agentTokens = live.agent.tokensIn + live.agent.tokensOut;
   const speedup = Math.round(live.agent.durationMs / live.replay.durationMs);
+  // Bars are drawn to linear scale on purpose: the replay bars are a sliver
+  // of the agent's, which is the point. A minimum width keeps them visible.
   const row = (
     label: string,
     time: string,
     tokens: string,
     calls: string,
+    ms: number,
     accent?: boolean,
   ) => (
     <div
       className={cn(
-        "grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl border p-4 sm:grid-cols-[1.4fr_1fr_1fr_1fr] sm:items-baseline",
+        "space-y-2 rounded-xl border p-4",
         accent && "border-emerald-600/30 bg-emerald-500/5",
       )}
     >
-      <p className="col-span-2 text-sm font-medium sm:col-span-1">{label}</p>
-      <p className="text-2xl font-semibold tabular-nums">{time}</p>
-      <p className="text-right text-sm tabular-nums text-muted-foreground sm:text-left">
-        {tokens} {t("rote.home.live.tokens")}
-      </p>
-      <p className="hidden text-sm tabular-nums text-muted-foreground sm:block">
-        {calls} {t("rote.home.live.calls")}
-      </p>
+      <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 sm:grid-cols-[1.4fr_1fr_1fr_1fr] sm:items-baseline">
+        <p className="col-span-2 text-sm font-medium sm:col-span-1">{label}</p>
+        <p className="text-2xl font-semibold tabular-nums">{time}</p>
+        <p className="text-right text-sm tabular-nums text-muted-foreground sm:text-left">
+          {tokens} {t("rote.home.live.tokens")}
+        </p>
+        <p className="hidden text-sm tabular-nums text-muted-foreground sm:block">
+          {calls} {t("rote.home.live.calls")}
+        </p>
+      </div>
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="img"
+        aria-label={time}
+      >
+        <div
+          className={cn(
+            "h-full rounded-full",
+            accent ? "bg-emerald-500" : "bg-foreground/70",
+          )}
+          style={{
+            width: `max(4px, ${(ms / live.agent.durationMs) * 100}%)`,
+          }}
+        />
+      </div>
     </div>
   );
   return (
@@ -174,12 +194,14 @@ function LiveComparison() {
           `${(live.agent.durationMs / 1000).toFixed(1)} s`,
           fmt(agentTokens),
           String(live.agent.modelCalls),
+          live.agent.durationMs,
         )}
         {row(
           t("rote.home.live.replay"),
           `${live.replay.durationMs} ms`,
           "0",
           "0",
+          live.replay.durationMs,
           true,
         )}
         {row(
@@ -187,6 +209,7 @@ function LiveComparison() {
           `${live.drift.fixMs} ms`,
           "0",
           "0",
+          live.drift.fixMs,
           true,
         )}
       </div>
