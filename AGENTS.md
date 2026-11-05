@@ -37,7 +37,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 - Work only inside this checkout. Never print or commit secrets. Do not deploy, push, create a public repository, open upstream issues/PRs, or use paid services without Mohit's approval.
 - Talk to Mohit in concise Hinglish; write code, docs, and submission material in English.
 - Use `./scripts/local pnpm ...` for the project-local runtime. Core stays pinned at 0.222.2 unless a blocking upgrade is justified.
-- The deterministic approval/verification/replay implementation is present. Live model acceptance, automated repair, fallback and scheduling remain pending. Never fabricate benchmark data or describe planned behavior as working.
+- Approval, verification, replay, deterministic drift repair (renames and date formats) and the restraint report are implemented. A guided live model run was accepted on 4 Nov 2026 (`docs/live-acceptance-2026-11-04.md`) and an unguided run is recorded in `docs/unguided-run-2026-11-05.md`. Automated model repair, model fallback and scheduling are not implemented. Never fabricate benchmark data or describe planned behavior as working.
 - Before committing, typecheck and tests must pass. Commit identity: `git -c user.name="Mohit Prajapati" -c user.email="mohitprajapati3112@gmail.com" commit -m "..."`.
 - User-requested README/progress documentation takes precedence over the generic template instruction not to rewrite README.
 
@@ -52,7 +52,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 ## Day 3 workflow
 
-Read `.agents/skills/rote-pipelines/SKILL.md` when working on recorded pipelines. `/tasks` is the review and replay screen. The complete model-backed live acceptance gate is still pending; do not claim a synthetic/manual run was an agent run.
+Read `.agents/skills/rote-pipelines/SKILL.md` when working on recorded pipelines. `/tasks` is the review and replay screen. The guided live acceptance run is recorded in `docs/live-acceptance-2026-11-04.md`; do not claim a synthetic, script-recorded or manual run was an agent run.
 
 | Action | Purpose |
 | --- | --- |
@@ -67,5 +67,10 @@ Read `.agents/skills/rote-pipelines/SKILL.md` when working on recorded pipelines
 | `run-task` | Zero-model replay with drift refusal and persisted metrics/version attribution; also an MCP tool (`mcpTool: true`) with `list-tasks`, `get-task`, `list-tables` |
 | `list-tasks`, `get-task` | Scoped metadata, versions and run history |
 | `get-verification-diff` | Proven app UI only; bounded reference differences, not an agent/MCP tool |
+| `prepare-format-change-sample` | Synthetic "bank changes its export" weeks 4–6 for an existing payout task |
+| `prepare-cdsco-task` | Real public CDSCO NSQ data (Jan–Mar 2026); January steps recorded by script, independent references; grants no approvals |
+| `propose-drift-fix` | After a drift stop, explain renamed columns and changed date formats without a model and re-run the recorded steps; approves nothing |
+| `get-restraint-report` | Group traced agent runs by the step actions they used, with token/time totals, and show which are covered by an approved pipeline |
+| `get-demo-status` | Public demo flag, next reset time and the demo agent's remaining hourly turns (UI only) |
 
 Trace projections in `server/rote/trace-evidence.ts` are read-only views of Core-owned schema, verified against pinned 0.222.2 source. Do not migrate framework tables. The public package does not export its observability store. Missing, mixed or incomplete trace evidence remains a manual run with null agent metrics. Step-log extraction is the documented fallback to captured framework traces.
