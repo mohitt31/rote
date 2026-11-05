@@ -32,7 +32,7 @@ Real data: India CDSCO "Not of Standard Quality" drug alerts. Taught on January 
 
 ## Honest limits
 
-- The teaching run was guided: the prompt named the steps. The model executed them and wired the real table IDs; it did not discover the reconciliation logic.
+- The teaching run was guided: the prompt named the steps. The model executed them and wired the real table IDs; it did not discover the reconciliation logic. A separate unguided run on real CDSCO data (goal only, no steps named) got batch, product, manufacturer, expiry and reporter right for 215–218 of 218 rows but categorized the failed test for only 46 rows, which is why every agent run stays a draft until a person approves it and an unseen holdout passes (`docs/unguided-run-2026-11-05.md`).
 - The CDSCO January steps were recorded by a script, not by an agent run. The references come from an independent plain-code implementation of the same written rules. Some published addresses have no comma after the company name, so those manufacturer names keep part of the address.
 - Drift repair handles renamed columns and changed date formats only; anything else stops for a person.
 - The public demo runs on free tiers (Netlify, Neon, Gemini free tier): the agent is capped at 8 requests per hour and can hit Google's "high demand" errors. Hosted replays take tens to ~140 ms because of database round trips; the 19.6 ms figure is from the laptop.

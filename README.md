@@ -75,7 +75,7 @@ On the hosted demo (Netlify functions + Neon) the same replays take tens to abou
 
 ## Honest limits
 
-- The teaching run was **guided**: the prompt named the steps. The model executed them and wired the real table IDs; it did not discover the reconciliation logic itself.
+- The teaching run was **guided**: the prompt named the steps. The model executed them and wired the real table IDs; it did not discover the reconciliation logic itself. A separate **unguided** run on real CDSCO data (goal only, no steps named) got batch, product, manufacturer, expiry and reporter right for 215–218 of 218 rows but categorized the failed test for only 46 rows, which is why every agent run stays a draft until a person approves it and an unseen holdout passes (`docs/unguided-run-2026-11-05.md`).
 - CDSCO January steps were recorded by a script, not an agent run. Its references come from an independent plain-code implementation of the same written rules. Some published addresses have no comma after the company name, so those manufacturer names keep part of the address.
 - Deterministic repair covers renamed columns and changed date formats only; anything else stops for a person.
 - No scheduling yet.
