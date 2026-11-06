@@ -61,7 +61,7 @@ const messages = {
       ask: {
         title: "Or ask the agent",
         off: "The agent is turned off on this deployment. Everything here runs with zero model calls.",
-        note: "The agent checks for an approved pipeline before doing work itself, so these cost a few small model calls, not a full job.",
+        note: "Start the guided demo first so an approved pipeline exists. The agent checks for one before doing work itself, so these cost a few small model calls, not a full job.",
         run: "Run this week's payouts with the approved pipeline",
         runPrompt:
           "Run this week's payout reconciliation. Check list-tasks first: if an approved pipeline covers it, use run-task with the latest week's tables instead of doing the job yourself, and tell me the status, time and model tokens it reported.",
