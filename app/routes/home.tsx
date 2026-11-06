@@ -1,4 +1,9 @@
 import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
+import {
+  getAgentSidebarState,
+  requestAgentSidebarOpen,
+  SIDEBAR_STATE_CHANGE_EVENT,
+} from "@agent-native/core/client/agent-sidebar-state";
 import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
 import {
@@ -18,6 +23,30 @@ import live from "../../benchmark/live-acceptance.json";
 import benchmark from "../../benchmark/results.json";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+
+/**
+ * A message sent while the agent panel is still mounting is dropped (seen on
+ * the live demo: the first prompt click opened an empty chat). Open the panel
+ * first, wait for it to announce itself, then give the composer a moment.
+ */
+async function openAgentPanel() {
+  if (getAgentSidebarState()?.open) return;
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener(SIDEBAR_STATE_CHANGE_EVENT, onChange);
+      setTimeout(resolve, 600);
+    };
+    const onChange = (e: Event) => {
+      if ((e as CustomEvent<{ open?: boolean }>).detail?.open) finish();
+    };
+    window.addEventListener(SIDEBAR_STATE_CHANGE_EVENT, onChange);
+    setTimeout(finish, 1500);
+    requestAgentSidebarOpen();
+  });
+}
 
 /** One click to a prepared sample task, plus agent prompts that show restraint. */
 function StartHere() {
@@ -49,7 +78,7 @@ function StartHere() {
   const agentOff = demo.data?.publicDemo && !demo.data.agent;
   // When this browser prepared a task, hand the agent its exact IDs so the
   // request needs one or two tool calls instead of a search.
-  const ask = (kind: "run" | "drift" | "restraint") => {
+  const ask = async (kind: "run" | "drift" | "restraint") => {
     let last: { taskId: string; next?: { inputs: Record<string, string> } } | null =
       null;
     try {
@@ -60,6 +89,7 @@ function StartHere() {
       last = null;
     }
     const exact = kind !== "restraint" && last?.next?.inputs;
+    await openAgentPanel();
     sendToAgentChat({
       message: exact
         ? t(`rote.home.ask.${kind}Exact`)
@@ -114,7 +144,7 @@ function StartHere() {
                 key={k}
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal py-2 text-left"
-                onClick={() => ask(k)}
+                onClick={() => void ask(k)}
               >
                 <IconMessageCircle className="size-4 shrink-0" />
                 {t(`rote.home.ask.${k}`)}

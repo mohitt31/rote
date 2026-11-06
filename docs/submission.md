@@ -42,6 +42,29 @@ Real data: India CDSCO "Not of Standard Quality" drug alerts. Taught on January 
 
 Started 31 Oct 2026 from the MIT-licensed Agent-Native Chat template (Core 0.222.2); libraries are listed in `package.json`. Built with AI coding assistants under my direction. Team: Mohit Prajapati (solo).
 
+## What was built during the event
+
+The rules ask entrants to separate pre-existing work from new work. Paste this:
+
+> Rote was started on 31 October 2026 from the MIT-licensed Agent-Native Chat template (Core 0.222.2). From the template we kept chat, sign-in, navigation, settings, UI primitives and migration setup. Everything Rote-specific was built during the event (47 commits, 31 Oct to 5 Nov): the 15 table step actions and their schemas, the approve → crystallize → verify → promote flow with hash-bound versions, zero-model `run-task` replay with schema-drift refusal, deterministic drift repair, the restraint report built on framework traces, the payout, vendor and CDSCO tasks, the public demo mode (hourly reset, capped demo agent), and the Home, Workbench and Tasks screens. CDSCO data is public Government of India data, bundled with its source URL and SHA-256.
+
+## Form fields (paste-ready)
+
+| Field | Answer |
+| --- | --- |
+| Project name | Rote |
+| Tagline | the "Tagline" section above |
+| Description | the "Description" section above |
+| Pre-existing work / what changed | "What was built during the event" above |
+| Team | Mohit Prajapati (solo), GitHub `mohitt31` |
+| Contact | your own email |
+| Demo | https://rote-demo.netlify.app (no sign-in; shared data resets hourly) |
+| Repository | https://github.com/mohitt31/rote |
+| Clips video | public link, checked in an incognito window |
+| Agent-Native features | the "Agent-Native features used" list above |
+
+If the form has a "how to test" box, paste the seven steps from "Try it in two minutes" in the README.
+
 ## Links
 
 - Public demo: https://rote-demo.netlify.app
@@ -72,8 +95,8 @@ Record on https://rote-demo.netlify.app, logged out, in a fresh window, at least
 | 0:40–1:05 | **Crystallize**, **Verify** | "Rote turns the recorded steps into a fixed plan, no generated code. It checks its own checker: an identical copy passes, a changed value fails. Both weeks match." Show "All rows match" badges. |
 | 1:05–1:15 | **Approve and activate** | "I approve this exact version, bound to its hash." |
 | 1:15–1:30 | **Run approved pipeline** | "Next week: replayed, zero model tokens." Hold on "0 model tokens · N ms". |
-| 1:30–1:55 | **Teach the new format** → **bank changes its export** → **Run** → **Suggest a fix (no AI)** | "The bank renamed a column and changed its dates. Rote stops. It explains the change without a model, a rename and a date format, and I can approve it as version 2." |
-| 1:55–2:15 | Home → **Run this week's payouts with the approved pipeline**; agent sidebar | "Ask the agent, and it doesn't redo the job. It finds the approved pipeline and calls run-task." Show the reply with 0 tokens. (Pre-record this part if the free model is busy.) |
+| 1:30–1:50 | Home → **Run this week's payouts with the approved pipeline**; agent sidebar | "Ask the agent, and it doesn't redo the job. It finds the approved pipeline and calls run-task." Show the reply with 0 tokens. (Pre-record this part if the free model is busy.) Must come before the format change: afterwards "this week" is in the new format and the agent's run stops on drift. |
+| 1:50–2:15 | Browser back to the task; scroll up to **Input format changed?** → **Teach the new format** → **Prepare sample: bank changes its export** → **Run** → **Suggest a fix (no AI)** | "The bank renamed a column and changed its dates. Rote stops. It explains the change without a model, a rename and a date format, and I can approve it as version 2." |
 | 2:15–2:30 | Tasks → CDSCO task already run; March "0 model tokens" | "It works on real data too: India's monthly drug-alert list, taught on January, verified on February, March replayed for free. Rote: teach it once." |
 
 Tips: keep the cursor still while numbers are on screen; do not speed up the parts with numbers; do not claim the agent discovered the logic.

@@ -23,8 +23,8 @@ Every output matched an independently generated reference. One run each; see `do
 1. Open the demo and click **Start the guided demo**.
 2. Approve the reference and the unseen holdout, then **Crystallize**, **Verify** (Rote first proves its comparator rejects a changed value and a dropped row) and **Approve and activate** the exact version hash.
 3. **Run approved pipeline**: next week replays with "0 model tokens".
-4. **Teach the new format → bank changes its export → Run**: the run stops on drift. **Suggest a fix (no AI)** explains the renamed column and the new date format without a model.
-5. Back on Home, **Or ask the agent → Run this week's payouts**: the agent checks for an approved pipeline and calls `run-task` instead of redoing the job.
+4. Back on Home, **Or ask the agent → Run this week's payouts**: the agent checks for an approved pipeline and calls `run-task` instead of redoing the job.
+5. Return to the task. Under **Input format changed?** click **Teach the new format → Prepare sample: bank changes its export**, then **Run**: the run stops on drift. **Suggest a fix (no AI)** explains the renamed column and the new date format without a model. (Asking the agent to run "this week" now hits the same drift stop, because this week's bank file is in the new format.)
 6. **Recurring tasks → Real data: CDSCO drug alerts** runs the same loop on real data.
 7. **Data workbench → Upload your own CSV / XLSX** (up to 1 MiB on the demo) to try the table actions, or ask the agent to clean it.
 
