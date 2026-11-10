@@ -6,6 +6,8 @@ Rote turns a data job an AI agent keeps repeating into a verified, versioned pip
 
 **Live demo:** https://rote-demo.netlify.app (no sign-in; shared data reset hourly)
 
+![Rote home: teach once, replay with zero model calls](docs/images/home.png)
+
 ## The numbers (recorded, not estimated)
 
 | Same job, same laptop (4 Nov 2026) | Time | Model tokens | Model calls |
@@ -16,7 +18,11 @@ Rote turns a data job an AI agent keeps repeating into a verified, versioned pip
 
 Every output matched an independently generated reference. One run each; see `docs/live-acceptance-2026-11-04.md` and `benchmark/live-acceptance.json`.
 
+![Same job: agent 42.1 s and 242,036 tokens vs. Rote replay 19.6 ms and 0 tokens](docs/images/agent-vs-pipeline.png)
+
 **Real public data:** India CDSCO "Not of Standard Quality" drug alerts. Taught on January 2026 (218 rows), verified on February (217), March (190 rows) replayed with 0 model tokens and matching an independent reference. See `docs/data-cdsco.md`.
+
+<img src="docs/images/cdsco-replay.png" alt="CDSCO March 2026 replayed with 0 model tokens" width="700">
 
 ## Try it in two minutes
 
@@ -29,6 +35,12 @@ Every output matched an independently generated reference. One run each; see `do
 7. **Data workbench → Upload your own CSV / XLSX** (up to 1 MiB on the demo) to try the table actions, or ask the agent to clean it.
 
 The demo agent runs on Gemini's free tier with a shared limit of 8 requests per hour; Google's free models are sometimes slow or briefly unavailable. Everything except the chat runs without a model.
+
+## What you will see
+
+| Verify before trusting | Stop, explain and repair without AI |
+| --- | --- |
+| ![Comparator self-check, then training and holdout both match](docs/images/verify.png) | ![Run stopped on drift; Suggest a fix explains a renamed column and a new date format](docs/images/drift-fix.png) |
 
 ## How it works
 
