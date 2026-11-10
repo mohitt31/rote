@@ -6,6 +6,8 @@ Rote turns a data job an AI agent keeps repeating into a verified, versioned pip
 
 **Live demo:** https://rote-demo.netlify.app (no sign-in; shared data reset hourly)
 
+**Demo video (2:28):** https://clips.agent-native.com/r/a93y34yHoYQ7
+
 ![Rote home: teach once, replay with zero model calls](docs/images/home.png)
 
 ## The numbers (recorded, not estimated)

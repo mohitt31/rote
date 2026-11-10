@@ -69,7 +69,7 @@ If the form has a "how to test" box, paste the seven steps from "Try it in two m
 
 - Public demo: https://rote-demo.netlify.app
 - Repository: https://github.com/mohitt31/rote
-- Clips video: `[paste after recording]`
+- Clips video: https://clips.agent-native.com/r/a93y34yHoYQ7 (captioned walkthrough built from real screenshots of the app; submitted 10 Nov 2026)
 
 ## Evidence
 
